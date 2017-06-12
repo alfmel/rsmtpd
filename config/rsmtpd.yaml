@@ -1,0 +1,18 @@
+# Configuration file for RSMTP daemon
+
+# Address (interface) to listen on
+address: localhost
+
+# Port number to listen on (port 25 not yet supported)
+port: 8025
+
+# User to run as if started by root (not yet supported)
+user: nobody
+
+# Run in background (not yet supported)
+background: false
+
+# Server name used during EHLO and QUIT commands
+server_name: mail.example.com
+
+

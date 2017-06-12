@@ -1,0 +1,4 @@
+# Configuration file for the reject_all command handler
+
+# Whether to close the connection on open (yes) or whether to keep it open and reply 521 to all commands (except QUIT)
+close_connection: yes

@@ -1,0 +1,16 @@
+# This file configures RSMTPD as a mail server that rejects all incoming messages (see RFC 7504).
+
+# Handle the initial connection response (before HELO/EHLO)
+__OPEN__:
+  - module: rsmtpd.handlers.reject_all
+    class: RejectAll
+
+# Handle the QUIT command
+QUIT:
+  - module: rsmtpd.handlers.quit
+    class: Quit
+
+# Handle any other command
+__DEFAULT__:
+  - module: rsmtpd.handlers.reject_all
+    class: RejectAll
