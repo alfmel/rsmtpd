@@ -24,5 +24,5 @@ class BaseCommand(metaclass=ABCMeta):
         return self.__config_loader.load(self, suffix=self.__config_suffix, default=default_config)
 
     @abstractmethod
-    def handle(self, command: str, argument: str, buffer_empty: bool, shared_state: SharedState) -> BaseResponse:
+    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
         raise NotImplementedError("Abstract method handle() must be implemented in child class")

@@ -9,13 +9,13 @@ email-related topics.
 Status
 ======
 
-RSMTPD is still in early alpha. The current 0.1.0 release is capable of running as an SMTP server which will respond
-with SMTP 521 (RFC 7504) to any command presented. Future work will include:
+RSMTPD is still in early alpha. The current 0.2.0 release is capable of running as an SMTP server which will respond
+with SMTP 521 (RFC 7504) to any command presented. It also includes the ability to log traffic to files. Future work
+will include:
 
-* Version 0.2.0: Ability to log traffic
 * Version 0.3.0: Ability to act as an SMTP proxy
-* Version 0.4.0: Full RFC 5321 command support with email delivery via pipes
-* Version 0.5.0: Basic spam-reducing functionality (SPF, Sender ID, reputation tracking)
+* Version 0.5.0: Full RFC 5321 command support with email delivery via pipes
+* Version 0.6.0: Basic spam-reducing functionality (SPF, Sender ID, reputation tracking)
 * ...
 * Version 0.9.0: First beta release, internal API freeze
 * Version 1.0.0: Available for general consumption
@@ -35,15 +35,16 @@ order to do it, I need a fully modular SMTP server I can tinker with.
 ======================================
 Isn't the spam problem already solved?
 ======================================
-No, it is not! If you use Gmail or another large provider, they have their own proprietary solutions. Other solutions
-like SpamAssassin and Spamhaus help, but are not appropriate for true academic research.
+No, it is not! Spammers continue to pound mail servers with all sorts of unsolicited junk. If you use Gmail or another
+large provider you don't notice the problem because they have their own effective but proprietary solutions. Other
+solutions like SpamAssassin and Spamhaus help, but are not appropriate for true academic research.
 
 ========================
 How is RSMTPD different?
 ========================
 RSMTPD is entirely modular by design. For any given SMTP command, administrators can specify any number of command
-handlers to determine how the server should respond to that command. The command handlers can also maintain shared state
-to pass information to other commands.
+handlers (a command chain) to determine how the server should respond to that command. The command handlers can also
+maintain shared state to pass information to other commands.
 
 Let's take the RCPT command, for example. This is used in the SMTP transaction to indicate who will receive the email.
 With RSMTPD, we can create specific command handlers to check the email address is valid. And if the email address is

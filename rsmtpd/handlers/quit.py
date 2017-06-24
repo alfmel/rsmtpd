@@ -9,7 +9,7 @@ class Quit(BaseCommand):
     response recommended in section 4.3.2.
     """
 
-    def handle(self, command: str, argument: str, buffer_empty: bool, shared_state: SharedState) -> BaseResponse:
+    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
         # Note: this command does not have any configuration
         if argument:
             return SmtpResponse501()

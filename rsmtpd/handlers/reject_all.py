@@ -15,6 +15,6 @@ class RejectAll(BaseCommand):
         "close_connection": True
     }
 
-    def handle(self, command: str, argument: str, buffer_empty: bool, shared_state: SharedState) -> BaseResponse:
+    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
         config = self._load_config(self._default_config)
         return SmtpResponse521(close_on_connect=config["close_connection"])

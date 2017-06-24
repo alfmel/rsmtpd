@@ -1,0 +1,7 @@
+# Logs all transactions to the given directory, one transaction per file. The
+# files are named with the following format:
+#
+#   YYYYMMDDTHHMMSS-(IP address)-(transactionId).log
+#
+# Set the log_path to null to disable
+log_path: /tmp

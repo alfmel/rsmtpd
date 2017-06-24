@@ -1,3 +1,4 @@
+import copy
 import socket
 
 from rsmtpd.core.config_loader import ConfigLoader
@@ -60,7 +61,7 @@ class Worker(object):
                            self._shared_state.remote_ip, self._shared_state.remote_port)
 
         # Run the command
-        response = self._handle_command("__open__", "", self._is_buffer_empty(connection))
+        response = self._handle_command("__OPEN__", "", self._is_buffer_empty(connection))
 
         if response is None:
             self.__logger.warning("%s Command handlers for \"__open__\" command did not provide a response; "
@@ -142,12 +143,18 @@ class Worker(object):
     def _handle_command(self, command: str, argument: str, buffer_empty: bool) -> BaseResponse:
         command_handlers = self._get_command_config(command)
         response = None
+
+        self._shared_state.current_command = self._shared_state.CurrentCommand()
+        self._shared_state.current_command.buffer_empty = buffer_empty
+
         for command_handler in command_handlers:
             handler = self._get_handler(command_handler)
             if handler is not None:
-                response = handler.handle(command, argument, buffer_empty, self._shared_state)
+                tmp_response = handler.handle(command, argument, self._shared_state)
 
-                # TODO: Combine responses
+                if tmp_response is not None:
+                    response = copy.deepcopy(tmp_response)
+                    self._shared_state.current_command.response = copy.deepcopy(response)
 
         return response
 
