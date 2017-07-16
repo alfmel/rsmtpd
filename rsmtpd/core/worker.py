@@ -4,12 +4,13 @@ import socket
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.handlers.base_command import BaseCommand
+from rsmtpd.handlers.base_data_command import BaseDataCommand
 from rsmtpd.handlers.shared_state import SharedState
-from rsmtpd.response.action import CLOSE, FORCE_CLOSE
+from rsmtpd.response.action import *
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_451 import SmtpResponse451
 from select import select
-from typing import Dict, List
+from typing import Dict, List, ClassVar
 
 
 class Worker(object):
@@ -40,6 +41,10 @@ class Worker(object):
         }]
     }
 
+    # Whether the last data chunk ended with CRLF
+    __last_data_chunk_ends_with_crlf = False
+    __first_data_chunk = True
+
     _handler_config = None
     _shared_state = None
 
@@ -60,40 +65,33 @@ class Worker(object):
         self.__logger.info("%s Starting SMTP session with %s:%s", self._shared_state.transaction_id,
                            self._shared_state.remote_ip, self._shared_state.remote_port)
 
-        # Run the command
-        response = self._handle_command("__OPEN__", "", self._is_buffer_empty(connection))
+        # Initialize the main command loop with the __OPEN__ command
+        command = "__OPEN__"
+        argument = None
+        buffer_is_empty = self._is_buffer_is_empty(connection)
 
-        if response is None:
-            self.__logger.warning("%s Command handlers for \"__open__\" command did not provide a response; "
-                                  "issuing permanent 451 response to client", self._shared_state.transaction_id)
-            response = SmtpResponse451(permanent=True)
-
-        if response.get_action() == FORCE_CLOSE:
-            self.__logger.info("%s Forcefully ending SMTP session with %s:%s as requested by command handler",
-                               self._shared_state.transaction_id, self._shared_state.remote_ip,
-                               self._shared_state.remote_port)
-            return
-
-        self.__logger.info("%s Sending opening message to client with SMTP code %s", self._shared_state.transaction_id,
-                           response.get_code())
-        connection.send(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
-
-        if response.get_action() == CLOSE:
-            self.__logger.info("%s Ending SMTP session with %s:%s as requested by command handler",
-                               self._shared_state.transaction_id, self._shared_state.remote_ip,
-                               self._shared_state.remote_port)
-            return
-
-        # Read commands and handle them until it's time to close the connection
+        # This is the main command loop; it can be told to handle a particular command or, if None, wait for the client
+        self.__logger.debug("Entering main command loop")
         while True:
-            self.__logger.debug("Entering main command loop")
+            if command is None:
+                # Read the next command from the client
+                command, argument, buffer_is_empty = self._read_command(connection)
+                self.__logger.debug("%s Received command \"%s\" with argument of \"%s\"",
+                                    self._shared_state.transaction_id, command, argument)
 
-            command, argument = self._read_command(connection)
-            self.__logger.debug("%s Received command \"%s\" with argument of \"%s\"", self._shared_state.transaction_id,
-                                command, argument)
-            response = self._handle_command(command, argument, self._is_buffer_empty(connection))
+            # Run the command
+            response = None
+            if command == "__DATA__":
+                response = self._handle_data(connection)
+            else:
+                response = self._handle_command(command, argument, buffer_is_empty)
 
-            # TODO: Handle all actions
+            if response is None:
+                self.__logger.warning("%s Command handlers for %s command did not provide a response; issuing "
+                                      "451 response to client and closing connection",
+                                      self._shared_state.transaction_id, command)
+                response = SmtpResponse451()
+
             if response.get_action() == FORCE_CLOSE:
                 self.__logger.info("%s Forcefully ending SMTP session with %s:%s as requested by command handler",
                                    self._shared_state.transaction_id, self._shared_state.remote_ip,
@@ -104,31 +102,43 @@ class Worker(object):
                                response.get_code())
             connection.send(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
 
+            # Clear the command for the next loop iteration
+            command = None
+
+            # TODO: Handle all actions
             if response.get_action() == CLOSE:
                 self.__logger.info("%s Ending SMTP session with %s:%s as requested by command handler",
                                    self._shared_state.transaction_id, self._shared_state.remote_ip,
                                    self._shared_state.remote_port)
                 return
+            elif response.get_action() == CONTINUE:
+                # Get the data in the next iteration
+                command = "__DATA__"
 
-    def _is_buffer_empty(self, connection: socket) -> bool:
+    def _is_buffer_is_empty(self, connection: socket) -> bool:
         r, w, e = select([connection], [], [], 0.01)
         if len(r) > 0:
             self.__logger.debug("Input buffer is not empty")
-            return True
+            return False
 
-        return False
+        return True
 
     def _read_command(self, connection: socket) -> (str, str):
         # Peek into the data to know the exact size
         # TODO: Set a maximum line length in the config
         peek = connection.recv(8192, socket.MSG_PEEK)
 
-        # TODO: Split on LF only to be less strict
-        lines = peek.decode("US-ASCII").split("\r\n")
+        # TODO: Look for LF only to be less strict and more flexible
+        index = peek.find(b"\r\n")
+
+        if index >= 0:
+            command_length = index + 2  # Get CRLF too; we'll strip it out later
+        else:
+            command_length = len(peek)
 
         # Now that we have the line, read from the buffer the exact line length + 2 (for cr/lf)
         # TODO: Handle UTF-8?
-        line = connection.recv(len(lines[0]) + 2).decode("US-ASCII")
+        line = connection.recv(command_length).decode("US-ASCII")
 
         # Split the command on the first space
         split_line = line.split(" ", maxsplit=1)
@@ -138,23 +148,109 @@ class Worker(object):
         else:
             argument = ""
 
-        return command, argument
+        return command, argument, len(peek) == command_length
 
-    def _handle_command(self, command: str, argument: str, buffer_empty: bool) -> BaseResponse:
+    def _read_data(self, connection: socket) -> (str, bool, bool):
+        # Peek into the data to know the exact size
+        peek = connection.recv(8192, socket.MSG_PEEK)
+        data_length = len(peek)
+
+        # TODO: If the client is only talking with LF, search appropriately
+        terminator_length = 5
+        data_end = False
+        if self.__last_data_chunk_ends_with_crlf:
+            if peek.find(b".\r\n") == 0:
+                data_end = True
+                data_length = 0
+                terminator_length = 3
+        else:
+            index = peek.find(b"\r\n.\r\n")
+            if index >= 0:
+                data_end = True
+                data_length = index
+
+        # Read the data for real now
+        data_chunk = connection.recv(data_length + terminator_length)
+
+        # If a line begins with a period, remove it (RFC 5321 4.5.2)
+        if (self.__first_data_chunk or self.__last_data_chunk_ends_with_crlf) and data_chunk[0] == b"."[0]:
+            data_chunk = data_chunk[1:]
+        else:
+            data_chunk = data_chunk.replace(b"\r\n.", b"\r\n")
+
+        # Get rid of the terminator, if we have one, and see if the data ends in CRLF
+        if data_end:
+            data_chunk = data_chunk[:-terminator_length]
+        else:
+            # See if it ends with CRLF
+            self.__last_data_chunk_ends_with_crlf = data_chunk[-2:] == b"\r\n"
+
+        return data_chunk, data_end, len(peek) == data_length + terminator_length
+
+    def _handle_command(self, command: str, argument: str, buffer_is_empty: bool) -> BaseResponse:
         command_handlers = self._get_command_config(command)
         response = None
 
         self._shared_state.current_command = self._shared_state.CurrentCommand()
-        self._shared_state.current_command.buffer_empty = buffer_empty
+        self._shared_state.current_command.buffer_is_empty = buffer_is_empty
 
         for command_handler in command_handlers:
-            handler = self._get_handler(command_handler)
+            handler = self._get_handler(command_handler, BaseCommand)
             if handler is not None:
-                tmp_response = handler.handle(command, argument, self._shared_state)
+                try:
+                    tmp_response = handler.handle(command, argument, self._shared_state)
+                except Exception as e:
+                    tmp_response = None
+                    self.__logger.error("Command handler %s threw exception while handling \"%s\" command with "
+                                        "argument \"%s\"; error: %s", type(handler).__name__, command, argument, str(e))
 
                 if tmp_response is not None:
                     response = copy.deepcopy(tmp_response)
                     self._shared_state.current_command.response = copy.deepcopy(response)
+
+        return response
+
+    def _handle_data(self, connection: socket) -> BaseResponse:
+        command_handlers = self._get_command_config("__DATA__")
+        response = None
+
+        # Get all the command handlers
+        data_handlers = []
+        for command_handler in command_handlers:
+            handler = self._get_handler(command_handler, BaseDataCommand)
+            if handler is not None:
+                data_handlers.append(handler)
+
+        # Read data in chunks and pass it to each of the handlers
+        self.__last_data_chunk_ends_with_crlf = False
+        self.__first_data_chunk = True
+        while True:
+            data, end, buffer_is_empty = self._read_data(connection)
+
+            self.__first_data_chunk = False
+            self._shared_state.current_command.buffer_is_empty = buffer_is_empty
+
+            for data_handler in data_handlers:
+                try:
+                    data_handler.handle_data(data, self._shared_state)
+                except Exception as e:
+                    self.__logger.error("Data handler %s threw exception while handling incoming data; error: %s ",
+                                        type(data_handler).__name__, str(e))
+
+            if end:
+                break
+
+        for data_handler in data_handlers:
+            try:
+                tmp_response = data_handler.handle_data_end(self._shared_state)
+            except Exception as e:
+                tmp_response = None
+                self.__logger.error("Data handler %s threw exception while handling end of data; error: %s ",
+                                    type(data_handler).__name__, str(e))
+
+            if tmp_response is not None:
+                response = copy.deepcopy(tmp_response)
+                self._shared_state.current_command.response = copy.deepcopy(response)
 
         return response
 
@@ -190,14 +286,14 @@ class Worker(object):
             command_config = self._handler_config["__DEFAULT__"]
         return command_config
 
-    def _get_handler(self, command_config: Dict):
+    def _get_handler(self, command_config: Dict, class_type: ClassVar):
         if command_config:
             try:
                 module = __import__(command_config["module"])
                 for sub in command_config["module"].split(".")[1:]:
                     module = getattr(module, sub)
                 class_ref = getattr(module, command_config["class"])
-                if issubclass(class_ref, BaseCommand):
+                if issubclass(class_ref, class_type):
                     self.__logger.debug("Instantiating class %s in module %s", command_config["class"],
                                         command_config["module"])
                     # TODO: Implement suffixes

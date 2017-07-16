@@ -25,7 +25,7 @@ class SharedState(object):
     # An internal class to represent the current command
     class CurrentCommand(object):
         # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before
-        # sending data (violates RFC 5321)
+        # sending data (violates RFC 5321 Section 4.3.1)
         buffer_is_empty = True
 
         # The last response received by the command handler for this command; helps command handlers merge responses
