@@ -13,14 +13,17 @@ class SharedState(object):
     clobbering them. Whenever possible, read any property you want, but only write to your handler's property.
     """
 
-    # A transaction ID given to every transaction
-    transaction_id = None
+    # A unique transaction ID given to every session
+    transaction_id: str = None
 
     # The IP address for the client
-    remote_ip = None
+    remote_ip: str = None
 
     # The port number for the client
-    remote_port = None
+    remote_port: int = None
+
+    # Whether the client is ESMTP capable (set by HELO or EHLO commands)
+    esmtp_capable: bool = None
 
     # An internal class to represent the current command
     class CurrentCommand(object):
@@ -32,7 +35,7 @@ class SharedState(object):
         response = None
 
     # An object with the current command information
-    current_command = None
+    current_command: CurrentCommand = None
 
     def __init__(self, remote_address):
         self.transaction_id = uuid4().hex

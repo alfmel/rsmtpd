@@ -7,5 +7,5 @@ class SmtpResponse351(BaseResponse):
     _message = "Start mail input; end with <CRLF>.<CRLF>"
     _action = CONTINUE
 
-    def __init__(self, alt_message: str=None):
+    def __init__(self, alt_message: str = None):
         super().__init__(alt_message)

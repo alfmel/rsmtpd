@@ -12,6 +12,8 @@ from rsmtpd.response.smtp_451 import SmtpResponse451
 from select import select
 from typing import Dict, List, ClassVar
 
+from rsmtpd.response.smtp_500 import SmtpResponse500
+
 
 class Worker(object):
     """
@@ -81,7 +83,9 @@ class Worker(object):
 
             # Run the command
             response = None
-            if command == "__DATA__":
+            if command is None:
+                response = SmtpResponse500()
+            elif command == "__DATA__":
                 response = self._handle_data(connection)
             else:
                 response = self._handle_command(command, argument, buffer_is_empty)
@@ -98,9 +102,15 @@ class Worker(object):
                                    self._shared_state.remote_port)
                 return
 
-            self.__logger.info("%s Sending response to client with SMTP code %s", self._shared_state.transaction_id,
-                               response.get_code())
-            connection.send(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
+            if self._shared_state.esmtp_capable:
+                self.__logger.info("%s Sending extended response to client with SMTP code %s",
+                                   self._shared_state.transaction_id, response.get_code())
+                connection.send(response.get_extended_smtp_response().replace("<domain>", self.__server_name).encode())
+            else:
+                self.__logger.info("%s Sending response to client with SMTP code %s",
+                                   self._shared_state.transaction_id,
+                                   response.get_code())
+                connection.send(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
 
             # Clear the command for the next loop iteration
             command = None
@@ -138,15 +148,21 @@ class Worker(object):
 
         # Now that we have the line, read from the buffer the exact line length + 2 (for cr/lf)
         # TODO: Handle UTF-8?
-        line = connection.recv(command_length).decode("US-ASCII")
+        try:
+            line = connection.recv(command_length).decode("US-ASCII")
 
-        # Split the command on the first space
-        split_line = line.split(" ", maxsplit=1)
-        command = split_line[0].strip()
-        if len(split_line) == 2:
-            argument = split_line[1].strip()
-        else:
-            argument = ""
+            # Split the command on the first space
+            split_line = line.split(" ", maxsplit=1)
+            command = split_line[0].strip()
+            if len(split_line) == 2:
+                argument = split_line[1].strip()
+            else:
+                argument = ""
+        except Exception as ex:
+            command = None
+            argument = None
+            self.__logger.info("Unable to read incoming command")
+            self.__logger.info(ex, exc_info=True)
 
         return command, argument, len(peek) == command_length
 

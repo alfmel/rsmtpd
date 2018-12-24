@@ -14,5 +14,3 @@ background: false
 
 # Server name used during EHLO and QUIT commands
 server_name: mail.example.com
-
-

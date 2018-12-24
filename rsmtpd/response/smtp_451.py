@@ -7,5 +7,5 @@ class SmtpResponse451(BaseResponse):
     _message = "Requested action aborted: local error in processing"
     _action = OK
 
-    def __init__(self, alt_message: str=None):
+    def __init__(self, alt_message: str = None):
         super().__init__(alt_message)

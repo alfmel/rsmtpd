@@ -23,7 +23,7 @@ class ConfigLoader(object):
     __path = None
     __logger = None
 
-    def __init__(self, logger: LoggerFactory, path: str=None):
+    def __init__(self, logger: LoggerFactory, path: str = None):
         """
         Checks to see where config files will be coming from. If no suitable directory is found, default values will
         always be used.
@@ -56,18 +56,18 @@ class ConfigLoader(object):
         else:
             self.__logger.info("Config path: %s", self.__path)
 
-    def load(self, class_ref: object, suffix: str="", default: Dict=None):
+    def load(self, class_ref: object, suffix: str = "", default: Dict = None):
         """
         Load a YAML configuration for a given object based on the module or class name, with an optional suffix.
 
-        If the class/object points ot a class named ExtHello in the module rsmtpd.handlers.ehlo, the loader will look
+        If the class/object points to a class named ExtHello in the module rsmtpd.handlers.ehlo, the loader will look
         for the following files in the configuration directory in this order:
 
           rsmtpd.handlers.ehlo.yaml
           ehlo.yaml
           ExtHello.yaml
 
-        If a prefix of "alt" is passed with the same class reference, the loader will look for the following files in
+        If a suffix of "alt" is passed with the same class reference, the loader will look for the following files in
         this order:
 
           rsmtpd.handlers.ehlo_alt.yaml
@@ -95,7 +95,9 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    return load(stream)
+                    config = load(stream)
+                    self.__logger.info("Loaded configuration from \"%s\"", config_file)
+                    return config
                 except YAMLError:
                     self.__logger.error("Could not parse YAML config file \"%s\"; using default configuration",
                                         config_file)
@@ -107,7 +109,9 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    return load(stream)
+                    config = load(stream)
+                    self.__logger.info("Loaded configuration from \"%s\"", config_file)
+                    return config
                 except YAMLError:
                     self.__logger.error("Could not parse YAML config file \"%s\"; using default configuration",
                                         config_file)
@@ -119,7 +123,9 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    return load(stream)
+                    config = load(stream)
+                    self.__logger.info("Loaded configuration from \"%s\"", config_file)
+                    return config
                 except YAMLError:
                     self.__logger.error("Could not parse YAML config file \"%2\"; using default configuration",
                                         config_file)
@@ -129,7 +135,7 @@ class ConfigLoader(object):
         self.__logger.debug("Configuration file \"%s\" not found; using default configuration", config_file)
         return default
 
-    def load_by_name(self, name: str, suffix: str="", default: Dict=None):
+    def load_by_name(self, name: str, suffix: str = "", default: Dict = None):
         """
         Load a YAML configuration with the given name with an optional suffix.
 
@@ -152,7 +158,9 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    return load(stream)
+                    config = load(stream)
+                    self.__logger.info("Loaded configuration from \"%s\"", config_file)
+                    return config
                 except YAMLError:
                     self.__logger.error("Could not parse YAML config file \"%s\"; using default configuration",
                                         config_file)
