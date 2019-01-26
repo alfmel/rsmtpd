@@ -1,0 +1,10 @@
+# This file configures RSMTPD as a proxy mail server, forwarding all commands to a different SMTP server. The main use
+# case for this configuration is to log commands going to a production SMTP server.
+
+# Handle all commands through the proxy handler
+__DEFAULT__:
+  - module: rsmtpd.handlers.proxy
+    class: Proxy
+  # Comment the two lines below to disable logging
+  - module: rsmtpd.handlers.transaction_log
+    class: TransactionLog

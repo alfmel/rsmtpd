@@ -1,6 +1,6 @@
 from rsmtpd.handlers.base_command import BaseCommand, SharedState
 from rsmtpd.handlers.base_data_command import BaseDataCommand
-from rsmtpd.response.smtp_351 import SmtpResponse351, BaseResponse
+from rsmtpd.response.smtp_354 import SmtpResponse354, BaseResponse
 from rsmtpd.response.smtp_521 import SmtpResponse521
 
 
@@ -12,7 +12,6 @@ class RejectAll(BaseCommand, BaseDataCommand):
     commands are accepted.
     """
 
-    _config = None
     _default_config = {
         "close_connection": True
     }
@@ -22,7 +21,7 @@ class RejectAll(BaseCommand, BaseDataCommand):
         if config["close_connection"]:
             return SmtpResponse521(close_on_connect=True)
         elif command.upper() == "DATA":
-            return SmtpResponse351()
+            return SmtpResponse354()
         else:
             return SmtpResponse521(close_on_connect=False)
 

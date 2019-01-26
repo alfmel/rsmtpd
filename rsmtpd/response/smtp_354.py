@@ -2,8 +2,8 @@ from rsmtpd.response.action import CONTINUE
 from rsmtpd.response.base_response import BaseResponse
 
 
-class SmtpResponse351(BaseResponse):
-    _smtp_code = 351
+class SmtpResponse354(BaseResponse):
+    _smtp_code = 354
     _message = "Start mail input; end with <CRLF>.<CRLF>"
     _action = CONTINUE
 

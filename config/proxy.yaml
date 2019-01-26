@@ -1,0 +1,5 @@
+# Configuration file for the proxy command handler
+
+# The host or IP address to connect to
+host: localhost
+port: 25

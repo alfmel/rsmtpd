@@ -121,6 +121,8 @@ class Worker(object):
                                    self._shared_state.transaction_id, self._shared_state.remote_ip,
                                    self._shared_state.remote_port)
                 return
+            elif response.get_action() == FORCE_CLOSE:
+                return
             elif response.get_action() == CONTINUE:
                 # Get the data in the next iteration
                 command = "__DATA__"
@@ -186,18 +188,18 @@ class Worker(object):
                 data_length = index
 
         # Read the data for real now
-        data_chunk = connection.recv(data_length + terminator_length)
-
-        # If a line begins with a period, remove it (RFC 5321 4.5.2)
-        if (self.__first_data_chunk or self.__last_data_chunk_ends_with_crlf) and data_chunk[0] == b"."[0]:
-            data_chunk = data_chunk[1:]
-        else:
-            data_chunk = data_chunk.replace(b"\r\n.", b"\r\n")
-
-        # Get rid of the terminator, if we have one, and see if the data ends in CRLF
         if data_end:
+            data_chunk = connection.recv(terminator_length)
             data_chunk = data_chunk[:-terminator_length]
         else:
+            data_chunk = connection.recv(data_length)
+
+            # If a line begins with a period, remove it (RFC 5321 4.5.2)
+            if (self.__first_data_chunk or self.__last_data_chunk_ends_with_crlf) and data_chunk[0] == b"."[0]:
+                data_chunk = data_chunk[1:]
+            else:
+                data_chunk = data_chunk.replace(b"\r\n.", b"\r\n")
+
             # See if it ends with CRLF
             self.__last_data_chunk_ends_with_crlf = data_chunk[-2:] == b"\r\n"
 
@@ -246,12 +248,13 @@ class Worker(object):
             self.__first_data_chunk = False
             self._shared_state.current_command.buffer_is_empty = buffer_is_empty
 
-            for data_handler in data_handlers:
-                try:
-                    data_handler.handle_data(data, self._shared_state)
-                except Exception as e:
-                    self.__logger.error("Data handler %s threw exception while handling incoming data; error: %s ",
-                                        type(data_handler).__name__, str(e))
+            if len(data):
+                for data_handler in data_handlers:
+                    try:
+                        data_handler.handle_data(data, self._shared_state)
+                    except Exception as e:
+                        self.__logger.error("Data handler %s threw exception while handling incoming data; error: %s ",
+                                            type(data_handler).__name__, str(e))
 
             if end:
                 break
