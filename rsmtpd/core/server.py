@@ -1,9 +1,9 @@
-import time
 import socket
 import threading
 
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
+from rsmtpd.core.tls import TLS
 from rsmtpd.core.worker import Worker
 
 
@@ -16,7 +16,11 @@ class Server(object):
         "port": 8025,
         "user": "nobody",
         "background": False,
-        "server_name": "mail.example.com"
+        "server_name": "mail.example.com",
+        "tls": {
+            "enabled": False,
+            "certificates": []
+        }
     }
 
     _config = None
@@ -25,10 +29,15 @@ class Server(object):
         self.__config_loader = config_loader
         self.__logger_factory = logger_factory
         self.__logger = logger_factory.get_module_logger(self)
+        self._tls = None
 
     def run(self, address=None, port=None, user=None, background=False):
         # Load the configuration
         self._load_config(address, port, user, background)
+
+        # Initialize TLS
+        self._tls = TLS(self._config["tls"]["enabled"], self._config["tls"]["certificates"], self.__logger_factory)
+        self._tls.load_certificates_and_keys()
 
         # Open the socket
         self.__logger.debug("Attempting to listen on address %s and port %s",
@@ -55,7 +64,7 @@ class Server(object):
         self.__logger.debug("Starting server worker for incoming connection")
         worker = Worker(self._config["server_name"], self.__config_loader, self.__logger_factory)
         self.__logger.debug("Server worker started; transferring control to worker")
-        worker.handle_client(connection, remote_addr)
+        worker.handle_client(connection, remote_addr, self._tls)
 
         # Close the connection
         self.__logger.info("Closing connection from IP %s and port %s", remote_addr[0], remote_addr[1])

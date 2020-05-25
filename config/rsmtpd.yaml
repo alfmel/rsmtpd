@@ -12,5 +12,21 @@ user: nobody
 # Run in background (not yet supported)
 background: false
 
-# Server name used during EHLO and QUIT commands
+# Server name used during initial EHLO and QUIT commands
 server_name: mail.example.com
+
+tls:
+  # Set to true to enable TLS and add certificate(s) below
+  enabled: false
+  # This is a list of certificates to load. If you have more than one certificate, the correct certificate will be
+  # used based on domain_match and the server name given via the TLS SNI extension. If the client does not present a
+  # server name the first certificate will be presented
+  certificates:
+    - domain_match: .example.com
+      server_name: mail.example.com
+      pem_file: /path/to/mail.example.com.pem
+      key_file: /path/to/mail.example.com.key
+    - domain_match: .example.net
+      server_name: mail.example.net
+      pem_file: /path/to/mail.example.net.pem
+      key_file: /path/to/mail.example.net.key

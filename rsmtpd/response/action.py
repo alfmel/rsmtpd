@@ -4,6 +4,9 @@ OK = "OK"
 # Valid response to DATA command, telling command processor to issue 354 and wait for <CRLF>.<CRLF>
 CONTINUE = "continue"
 
+# Start TLS session
+STARTTLS = "starttls"
+
 # Error condition leaving us in an invalid or incorrect state
 INVALID = "invalid"
 

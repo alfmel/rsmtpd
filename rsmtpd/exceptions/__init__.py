@@ -1,0 +1,2 @@
+class RemoteConnectionClosed(Exception):
+    pass

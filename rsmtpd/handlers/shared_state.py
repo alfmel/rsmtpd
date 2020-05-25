@@ -22,6 +22,12 @@ class SharedState(object):
     # The port number for the client
     remote_port: int = None
 
+    # Whether TLS support is enabled and configured
+    tls_available: bool = False
+
+    # Whether TLS has been enabled in the session
+    tls_enabled: bool = False
+
     # Whether the client is ESMTP capable (set by HELO or EHLO commands)
     esmtp_capable: bool = None
 
@@ -37,8 +43,9 @@ class SharedState(object):
     # An object with the current command information
     current_command: CurrentCommand = None
 
-    def __init__(self, remote_address):
+    def __init__(self, remote_address, tls_available=False):
         self.transaction_id = uuid4().hex
+        self.tls_available = tls_available
         self.remote_ip = remote_address[0]
         self.remote_port = remote_address[1]
         self.current_command = self.CurrentCommand()

@@ -48,7 +48,7 @@ class TransactionLog(BaseCommand, BaseDataCommand):
             # Get the response
             response = None
             if shared_state.current_command.response:
-                response = shared_state.current_command.response.get_smtp_response()
+                response = shared_state.current_command.response.get_extended_smtp_response()
 
             # Call the writer
             self._write(f, timestamp, buffer, command, argument, response)
@@ -57,26 +57,18 @@ class TransactionLog(BaseCommand, BaseDataCommand):
         return None
 
     def handle_data(self, data: bytes, shared_state: SharedState):
-        self._config = self._load_config(self._default_config)
         f = self._get_handle(shared_state)
-
         f.write(data.decode("US-ASCII"))
-        pass
 
     def handle_data_end(self, shared_state: SharedState) -> BaseResponse:
-        # Get the file handle
         f = self._get_handle(shared_state)
-
-        # Get a timestamp
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
-
         f.write("\r\n< {} End of DATA\r\n".format(timestamp))
 
         # Put the response together
         response_output = "< (No response)"
         if shared_state.current_command.response:
             response_output = "< {}".format(shared_state.current_command.response.get_smtp_response())
-
         f.write(response_output)
 
     def _write(self, f, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
