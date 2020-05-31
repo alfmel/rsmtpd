@@ -1,12 +1,10 @@
-import ssl
 import unittest
-from unittest.mock import patch
 
 from rsmtpd.core.tls import TLS
 from tests.mocks import StubLoggerFactory
 
 
-class MyTestCase(unittest.TestCase):
+class TestTLS(unittest.TestCase):
     """
     Unit test for TLS manager
     """
@@ -35,29 +33,23 @@ class MyTestCase(unittest.TestCase):
     def test_select_certificate(self):
         certs = self._get_test_certificates()
         tls = TLS(True, certs, self._stub_logger_factory)
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
-        with patch.object(ssl_context, "load_cert_chain") as mock:
-            tls.select_certificate("mail.example.com", ssl_context)
-            mock.assert_called_with(certs[0]["pem_file"], certs[0]["key_file"])
+        certificate = tls.select_certificate("mail.example.com")
+        self.assertEqual(certificate, certs[0])
 
-        with patch.object(ssl_context, "load_cert_chain") as mock:
-            tls.select_certificate("mail.example.net", ssl_context)
-            mock.assert_called_with(certs[1]["pem_file"], certs[1]["key_file"])
+        certificate = tls.select_certificate("mail.example.net")
+        self.assertEqual(certificate, certs[1])
 
         # Should fall back to first certificate if there is no match
-        with patch.object(ssl_context, "load_cert_chain") as mock:
-            tls.select_certificate("smtp.example.org", ssl_context)
-            mock.assert_called_with(certs[0]["pem_file"], certs[0]["key_file"])
+        certificate = tls.select_certificate("smtp.example.org")
+        self.assertEqual(certificate, certs[0])
 
     def test_select_certificate_single_certificate(self):
         cert = self._get_test_certificates()[1]
         tls = TLS(True, [cert], self._stub_logger_factory)
-        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 
-        with patch.object(ssl_context, "load_cert_chain") as mock:
-            tls.select_certificate("mail.example.net", ssl_context)
-            mock.assert_called_with(cert["pem_file"], cert["key_file"])
+        certificate = tls.select_certificate("mail.example.net")
+        self.assertEqual(certificate, cert)
 
     def _get_test_certificates(self):
         return [

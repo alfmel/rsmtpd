@@ -31,6 +31,9 @@ class SharedState(object):
     # Whether the client is ESMTP capable (set by HELO or EHLO commands)
     esmtp_capable: bool = None
 
+    # Whether the last receivd command ended with proper CRLF
+    last_command_has_standard_line_ending: bool = True
+
     # An internal class to represent the current command
     class CurrentCommand(object):
         # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before

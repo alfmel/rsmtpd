@@ -44,14 +44,23 @@ class TLS(object):
         try:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.sni_callback = lambda conn, server_name, ssl_context: \
-                self.select_certificate(conn, server_name, ssl_context)
+                self._select_and_assign_certificate(conn, server_name, ssl_context)
+
             tls_connection = context.wrap_socket(connection, server_side=True)
             return tls_connection, None, self._server_name
         except Exception as e:
             self._logger.error("Unable to start TLS", e)
             return connection, SmtpResponse454()
 
-    def select_certificate(self, connection: ssl.SSLSocket, server_name: str, context: SSLContext):
+    def _select_and_assign_certificate(self, connection: ssl.SSLSocket, server_name: str, ssl_context: SSLContext):
+        certificate = self.select_certificate(server_name)
+        new_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        new_context.load_cert_chain(certificate["pem_file"], certificate["key_file"])
+        connection.context = new_context
+        self._server_name = certificate["server_name"]
+        self._logger.info("Successfully loaded TLS certificate and key")
+
+    def select_certificate(self, server_name: str):
         certificate_count = len(self._certificates)
         if certificate_count > 1 and server_name:
             certificate = None
@@ -66,12 +75,14 @@ class TLS(object):
         else:
             certificate = self._certificates[0]
 
-        new_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-        new_context.load_cert_chain(certificate["pem_file"], certificate["key_file"])
-        connection.context = new_context
-        self._server_name = certificate["server_name"]
-        self._logger.info("Loaded certificate for {} based on server name \"{}\""
-                          .format(certificate["server_name"], server_name))
+        if server_name:
+            self._logger.info("Selected certificate for {} based on server name \"{}\""
+                              .format(certificate["server_name"], server_name))
+        else:
+            self._logger.info("Selected default certificate ({}) since client did not provide server name"
+                              .format(certificate["server_name"], server_name))
+
+        return certificate
 
     def _load_file(self, filename: str) -> str:
         try:

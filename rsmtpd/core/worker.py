@@ -1,12 +1,12 @@
 import copy
 import socket
-from select import select
 from typing import Dict, List, ClassVar
 
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
+from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.core.tls import TLS
-from rsmtpd.exceptions import RemoteConnectionClosed
+from rsmtpd.exceptions import RemoteConnectionClosedException
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 from rsmtpd.handlers.shared_state import SharedState
@@ -53,9 +53,10 @@ class Worker(object):
         self.__logger = logger_factory.get_module_logger(self)
         self._handler_config = None
         self._shared_state = None
-        self.__buffer = bytearray()
 
-    def handle_client(self, connection: socket, remote_address, tls: TLS):
+    def handle_client(self, sock: socket, remote_address, tls: TLS):
+        smtp_socket = SMTPSocket(sock)
+
         # Load the worker and handler configurations
         command_handler_name = self._get_worker_config()
         self._handler_config = self._get_handler_config(command_handler_name)
@@ -68,7 +69,6 @@ class Worker(object):
         # Initialize the main command loop with the __OPEN__ command
         command = "__OPEN__"
         argument = None
-        buffer_is_empty = self._is_buffer_empty(connection)
 
         # This is the main command loop; it can be told to handle a particular command or, if None, wait for the client
         self.__logger.debug("Entering main command loop")
@@ -76,8 +76,8 @@ class Worker(object):
             if command is None:
                 # Read the next command from the client
                 try:
-                    command, argument, buffer_is_empty = self._read_command(connection)
-                except RemoteConnectionClosed as e:
+                    command, argument = self._read_command(smtp_socket)
+                except RemoteConnectionClosedException as e:
                     self.__logger.warning("Connection closed unexpectedly by client")
                     return
                 self.__logger.debug("%s Received command \"%s\" with argument of \"%s\"",
@@ -88,9 +88,9 @@ class Worker(object):
             if command is None:
                 response = SmtpResponse500()
             elif command == "__DATA__":
-                response = self._handle_data(connection)
+                response = self._handle_data(smtp_socket)
             else:
-                response = self._handle_command(command, argument, buffer_is_empty)
+                response = self._handle_command(command, argument, smtp_socket.buffer_is_empty())
 
             if response is None:
                 self.__logger.warning("%s Command handlers for %s command did not provide a response; issuing "
@@ -105,19 +105,20 @@ class Worker(object):
                 return
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
-                    self._send_response(connection, response)
-                    ssl_socket, response, server_name = tls.start(connection)
+                    self._send_response(smtp_socket, response)
+                    ssl_socket, response, server_name = tls.start(sock)
                     if not response:
                         self._shared_state.tls_enabled = True
                         self.__server_name = server_name
-                        connection = ssl_socket
+                        sock = ssl_socket
+                        smtp_socket = SMTPSocket(ssl_socket)
                         self.__logger.info("TLS successfully initialized")
                         command = None
                         continue
                 else:
                     response = SmtpResponse500()
 
-            self._send_response(connection, response)
+            self._send_response(smtp_socket, response)
 
             # Clear the command for the next loop iteration
             command = None
@@ -134,32 +135,18 @@ class Worker(object):
                 # Get the data in the next iteration
                 command = "__DATA__"
 
-    def _is_buffer_empty(self, connection: socket) -> bool:
-        r, w, e = select([connection], [], [], 0.01)
-        if len(r) > 0:
-            self.__logger.debug("Input buffer is not empty")
-            return False
-
-        return True
-
-    def _read_command(self, connection: socket) -> (str, str):
-        while b"\n" not in self.__buffer:
-            bytes_read = connection.recv(4096)
-            if len(bytes_read) == 0:
-                raise RemoteConnectionClosed("Client connection closed")
-            self.__buffer += bytes_read
-
-        line_length = self.__buffer.index(b"\n") + 1  # include LF too; it will be stripped later
-        line_bytearray = self.__buffer[0:line_length]
-        self.__buffer = self.__buffer[line_length:]
+    def _read_command(self, smtp_socket: SMTPSocket) -> (str, str):
+        # TODO: Enforce line length
+        line_bytes = smtp_socket.read_line()
+        self._shared_state.last_command_has_standard_line_ending = line_bytes[-2:] == b"\r\n"
 
         try:
-            # TODO: Handle UTF-8?
-            line = line_bytearray.decode("US-ASCII")
+            # TODO: Handle non-ASCII encoding
+            line = line_bytes.decode("US-ASCII").strip()
 
             # Split the command on the first space
             split_line = line.split(" ", maxsplit=1)
-            command = split_line[0].strip()
+            command = split_line[0]
             if len(split_line) == 2:
                 argument = split_line[1].strip()
             else:
@@ -170,51 +157,30 @@ class Worker(object):
             self.__logger.info("Unable to read incoming command")
             self.__logger.info(ex, exc_info=True)
 
-        return command, argument, len(self.__buffer) == 0
+        return command, argument
 
-    def _read_data(self, connection: socket) -> (str, bool, bool):
-        data = connection.recv(4096)
-        data_end = False
-        terminator_length = 5
-        if self.__last_data_chunk_ends_with_crlf:
-            if data.find(b".\r\n") == 0:
-                data_end = True
-                data_length = 0
-                terminator_length = 3
-        else:
-            index = data.find(b"\r\n.\r\n")
-            if index >= 0:
-                data_end = True
-                data_length = index
-
-        if data_end:
-            data_chunk = data[0:data_length]
-            self.__buffer = data[data_length + terminator_length:]
-        else:
-            data_chunk = data
+    def _read_data(self, smtp_socket: SMTPSocket) -> (str, bool, bool):
+        # Reading SMTP data is done line-by-line to enforce data lengths and handle data termination
+        # TODO: Enforce data line length
+        line = smtp_socket.read_line()
+        data_end = line.rstrip() == b"."
 
         # If a line begins with a period, remove it (RFC 5321 4.5.2)
-        if len(data_chunk) and (self.__first_data_chunk or self.__last_data_chunk_ends_with_crlf)\
-                and data_chunk[0] == b".":
-            data_chunk = data_chunk[1:]
-        else:
-            data_chunk = data_chunk.replace(b"\r\n.", b"\r\n")
+        if len(line) and line[0] == b".":
+            data_chunk = line[1:]
 
-        # See if it ends with CRLF
-        self.__last_data_chunk_ends_with_crlf = data_chunk[-2:] == b"\r\n"
+        return line, data_end
 
-        return data_chunk, data_end, len(self.__buffer) == 0
-
-    def _send_response(self, connection: socket, response: BaseResponse):
+    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse):
         if self._shared_state.esmtp_capable:
             self.__logger.info("%s Sending extended response to client with SMTP code %s",
                                self._shared_state.transaction_id, response.get_code())
-            connection.send(response.get_extended_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(response.get_extended_smtp_response().replace("<domain>", self.__server_name).encode())
         else:
             self.__logger.info("%s Sending response to client with SMTP code %s",
                                self._shared_state.transaction_id,
                                response.get_code())
-            connection.send(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
 
     def _handle_command(self, command: str, argument: str, buffer_is_empty: bool) -> BaseResponse:
         command_handlers = self._get_command_config(command)
@@ -239,7 +205,7 @@ class Worker(object):
 
         return response
 
-    def _handle_data(self, connection: socket) -> BaseResponse:
+    def _handle_data(self, smtp_socket: SMTPSocket) -> BaseResponse:
         command_handlers = self._get_command_config("__DATA__")
         response = None
 
@@ -250,16 +216,10 @@ class Worker(object):
             if handler is not None:
                 data_handlers.append(handler)
 
-        # Read data in chunks and pass it to each of the handlers
-        self.__last_data_chunk_ends_with_crlf = False
-        self.__first_data_chunk = True
+        # Read data line-by-line and pass it to each of the handlers
         while True:
-            data, end, buffer_is_empty = self._read_data(connection)
-
-            self.__first_data_chunk = False
-            self._shared_state.current_command.buffer_is_empty = buffer_is_empty
-
-            if len(data):
+            data, end = self._read_data(smtp_socket)
+            if not end:
                 for data_handler in data_handlers:
                     try:
                         data_handler.handle_data(data, self._shared_state)

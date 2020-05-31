@@ -1,6 +1,8 @@
 from logging import Logger
+from socket import socket
 from typing import Dict
 from unittest.mock import Mock
+
 from rsmtpd import ConfigLoader, LoggerFactory
 
 
@@ -35,3 +37,7 @@ class MockConfigLoader(ConfigLoader):
             return default
         else:
             return self._config
+
+
+def get_mock_socket() -> Mock(socket):
+    return Mock(socket)
