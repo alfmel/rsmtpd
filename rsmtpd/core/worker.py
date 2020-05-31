@@ -286,7 +286,8 @@ class Worker(object):
                     self.__logger.debug("Instantiating class %s in module %s", command_config["class"],
                                         command_config["module"])
                     # TODO: Implement suffixes
-                    instance = class_ref(self.__logger_factory.get_module_logger(class_ref), self.__config_loader, "")
+                    instance = class_ref(self.__logger_factory.get_child_logger(command_config["class"]),
+                                         self.__config_loader, "")
                     self.__logger.debug("Class %s in module %s successfully instantiated", command_config["class"],
                                         command_config["module"])
                     return instance

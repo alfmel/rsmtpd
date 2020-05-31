@@ -38,3 +38,6 @@ class LoggerFactory(object):
         logger = self.__logger.getChild(type(module).__name__)
         # logger.setLevel(self.__log_level)
         return logger
+
+    def get_child_logger(self, name: str) -> logging.Logger:
+        return self.__logger.getChild(name)
