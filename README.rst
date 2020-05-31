@@ -9,11 +9,16 @@ email-related topics.
 Status
 ======
 
-RSMTPD is still in early alpha. The current 0.2.0 release is capable of running as an SMTP server which will respond
-with SMTP 521 (RFC 7504) to any command presented. It also includes the ability to log traffic to files. Future work
-will include:
+RSMTPD is still in early alpha. The latest 0.3. release is capable of:
+* Running an SMTP server on a non-privileged port
+* Respond SMTP 521 (RFC 7504) to any command presented
+* Acting as a proxy to another full SMTP server, including TLS and SNI
+* Logging commands and responses to transaction logs
 
-* Version 0.3.0: Ability to act as an SMTP proxy
+========
+ROAD MAP
+========
+
 * Version 0.5.0: Full RFC 5321 command support with email delivery via pipes
 * Version 0.6.0: Basic spam-reducing functionality (SPF, Sender ID, reputation tracking)
 * ...
@@ -43,7 +48,7 @@ solutions like SpamAssassin and Spamhaus help, but are not appropriate for true 
 How is RSMTPD different?
 ========================
 RSMTPD is entirely modular by design. For any given SMTP command, administrators can specify any number of command
-handlers (a command chain) to determine how the server should respond to that command. The command handlers can also
+handlers (a handler chain) to determine how the server should respond to that command. The command handlers can also
 maintain shared state to pass information to other commands.
 
 Let's take the RCPT command, for example. This is used in the SMTP transaction to indicate who will receive the email.
