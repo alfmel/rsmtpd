@@ -24,18 +24,13 @@ class SMTPSocket(object):
             return True
 
     def read(self) -> bytes:
-        if len(self.__buffer):
-            data = self.__buffer
-            self.__clear_buffer()
-        else:
-            bytes_read = self.__socket.recv(self.__read_size)
-            if len(bytes_read) == 0:
-                raise RemoteConnectionClosedException("Client connection closed")
-            self.__has_been_read = True
-            data = bytes_read
-        return data
+        bytes_read = self.__socket.recv(self.__read_size)
+        if len(bytes_read) == 0:
+            raise RemoteConnectionClosedException("Client connection closed")
+        self.__has_been_read = True
+        return bytes_read
 
-    def read_line(self, limit=32768) -> bytearray:
+    def read_line(self, limit=32768) -> bytes:
         """
         Reads the buffer one line at a time. Returned data will contain LF.
         """
@@ -55,6 +50,3 @@ class SMTPSocket(object):
             self.__socket.send(data)
         except Exception as e:
             raise RemoteConnectionClosedException("Client connection closed")
-
-    def __clear_buffer(self) -> None:
-        self.__buffer = b""
