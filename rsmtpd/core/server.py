@@ -1,4 +1,6 @@
+import os
 import socket
+import sys
 import threading
 
 from rsmtpd.core.config_loader import ConfigLoader
@@ -14,7 +16,8 @@ class Server(object):
     __default_config = {
         "address": "127.0.0.1",
         "port": 8025,
-        "user": "nobody",
+        "user": None,
+        "group": None,
         "background": False,
         "server_name": "mail.example.com",
         "tls": {
@@ -31,9 +34,9 @@ class Server(object):
         self.__logger = logger_factory.get_module_logger(self)
         self._tls = None
 
-    def run(self, address=None, port=None, user=None, background=False):
+    def run(self, address=None, port=None, user=None, group=None, background=False):
         # Load the configuration
-        self._load_config(address, port, user, background)
+        self._load_config(address, port, user, group, background)
 
         # Initialize TLS
         self._tls = TLS(self._config["tls"]["enabled"], self._config["tls"]["certificates"], self.__logger_factory)
@@ -45,12 +48,39 @@ class Server(object):
         server = socket.socket()
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self._config["address"], self._config["port"]))
+
+        # Shed privileges
+        if "user" in self._config and self._config["user"]:
+            try:
+                group_id = None
+                if "group" in self._config and self._config["group"]:
+                    import grp
+                    try:
+                        group_id = grp.getgrnam(self._config["group"])[2]
+                    except KeyError:
+                        self.__logger.error("Group %s does not exist in this system", self._config["group"])
+
+                import pwd
+                user = pwd.getpwnam(self._config["user"])
+                if group_id is None:
+                    group_id = user[3]
+                if group_id is not None:
+                    os.setgid(group_id)
+                os.setuid(user[2])
+            except ImportError:
+                self.__logger.error("Running as user %s is only supported in Unix environments", self._config["user"])
+                sys.exit(1)
+            except PermissionError:
+                self.__logger.error("Could not switch to user %s: permission denied", self._config["user"])
+                sys.exit(1)
+            except KeyError:
+                self.__logger.error("User %s does not exist in this system", self._config["user"])
+                sys.exit(1)
+
         server.listen(1)
         self.__logger.info("RSMTPD server listening on %s:%s", self._config["address"], self._config["port"])
 
         # TODO: go to background if requested
-
-        # TODO: shed privileges if root
 
         # Handle responses
         while True:
@@ -70,7 +100,7 @@ class Server(object):
         self.__logger.info("Closing connection from IP %s and port %s", remote_addr[0], remote_addr[1])
         connection.close()
 
-    def _load_config(self, address, port, user, background):
+    def _load_config(self, address, port, user, group, background):
         # Load the configuration
         self._config = self.__config_loader.load_by_name("rsmtpd", "", self.__default_config)
 
@@ -83,6 +113,9 @@ class Server(object):
 
         if user is not None:
             self._config["user"] = user
+
+        if group is not None:
+            self._config["group"] = group
 
         if background is not None:
             self._config["background"] = background

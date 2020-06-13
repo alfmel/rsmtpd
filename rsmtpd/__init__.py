@@ -26,9 +26,11 @@ def main(argv):
                                  "/etc/rsmtpd and $PWD/config in that order. RSMTPD config file must be named "
                                  "rsmtpd.conf.")
     arg_parser.add_argument("-a", "--address", default=None, help="Address to listen on (default: 127.0.0.1)")
-    arg_parser.add_argument("-p", "--port", default=None, help="Port to listen on (default: 8025)")
-    arg_parser.add_argument("-u", "--user", default="nobody",
-                            help="User to run as when started as root (required to bind port 25; default: nobody)")
+    arg_parser.add_argument("-p", "--port", default=8025, help="Port to listen on (default: 8025)")
+    arg_parser.add_argument("-u", "--user", default=None,
+                            help="User to run as when started as root (required to bind port 25 securely)")
+    arg_parser.add_argument("-g", "--group", default=None,
+                            help="Group to run as when started as root (default: GID of user if specified")
     arg_parser.add_argument("-b", "--background", action="store_true",
                             help="Run in the background (default: run in the foreground)")
     arg_parser.add_argument("-l", "--log-path", default=None,
@@ -46,7 +48,7 @@ def main(argv):
 
     # Start the server
     server = Server(config_loader, logger_factory)
-    server.run(args.address, args.port, args.user, args.background)
+    server.run(args.address, int(args.port), args.user, args.group, args.background)
 
 
 if __name__ == "__main__":
