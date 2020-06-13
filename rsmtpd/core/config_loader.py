@@ -1,7 +1,7 @@
 import os
-
 from typing import Dict
-from yaml import load, YAMLError
+
+from yaml import load, SafeLoader, YAMLError
 
 from rsmtpd.core.logger_factory import LoggerFactory
 
@@ -95,7 +95,7 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    config = load(stream)
+                    config = load(stream, Loader=SafeLoader)
                     self.__logger.info("Loaded configuration from \"%s\"", config_file)
                     return config
                 except YAMLError:
@@ -109,7 +109,7 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    config = load(stream)
+                    config = load(stream, Loader=SafeLoader)
                     self.__logger.info("Loaded configuration from \"%s\"", config_file)
                     return config
                 except YAMLError:
@@ -123,7 +123,7 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    config = load(stream)
+                    config = load(stream, Loader=SafeLoader)
                     self.__logger.info("Loaded configuration from \"%s\"", config_file)
                     return config
                 except YAMLError:
@@ -158,7 +158,7 @@ class ConfigLoader(object):
         if os.path.isfile(config_file):
             with open(config_file) as stream:
                 try:
-                    config = load(stream)
+                    config = load(stream, Loader=SafeLoader)
                     self.__logger.info("Loaded configuration from \"%s\"", config_file)
                     return config
                 except YAMLError:
