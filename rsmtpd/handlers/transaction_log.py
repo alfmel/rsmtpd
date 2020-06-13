@@ -16,7 +16,10 @@ A set of command handlers that log commands and responses. There are three diffe
 import os
 import time
 from datetime import datetime
-from rsmtpd.handlers.base_command import BaseCommand, BaseResponse, SharedState
+from logging import Logger
+
+from rsmtpd import ConfigLoader
+from rsmtpd.handlers.base_command import BaseCommand, SharedState
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 
 
@@ -24,19 +27,21 @@ class TransactionLog(BaseCommand, BaseDataCommand):
     """
     A command handler that logs all commands and responses to a file. Each new SMTP transaction gets its own file.
     """
-    _config = None
     _default_config = {
         "log_path": None
     }
 
-    class _TransactionLogSharedState(object):
-        f = None
+    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = ""):
+        super().__init__(logger, config_loader, config_suffix, TransactionLog._default_config)
+        self._initialized = False
+        self._f = None
 
-    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
-        self._config = self._load_config(self._default_config)
-        f = self._get_handle(shared_state)
+    def handle(self, command: str, argument: str, shared_state: SharedState) -> None:
+        if not self._initialized:
+            self._create_new_transaction_log(shared_state)
+            self._initialized = True
 
-        if f is not None:
+        if self._f is not None:
             # Get a timestamp
             timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
 
@@ -51,81 +56,75 @@ class TransactionLog(BaseCommand, BaseDataCommand):
                 response = shared_state.current_command.response.get_extended_smtp_response()
 
             # Call the writer
-            self._write(f, timestamp, buffer, command, argument, response)
-            f.flush()
-
-        return None
+            self._write(timestamp, buffer, command, argument, response)
+            self._f.flush()
 
     def handle_data(self, data: bytes, shared_state: SharedState):
-        f = self._get_handle(shared_state)
-        f.write(data.decode("US-ASCII"))
+        if not self._initialized:
+            self._create_new_transaction_log(shared_state)
+            self._initialized = True
 
-    def handle_data_end(self, shared_state: SharedState) -> BaseResponse:
-        f = self._get_handle(shared_state)
-        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
-        f.write("\r\n< {} End of DATA\r\n".format(timestamp))
+        if self._f is not None:
+            self._f.write(data.decode("US-ASCII"))
 
-        # Put the response together
-        response_output = "< (No response)"
-        if shared_state.current_command.response:
-            response_output = "< {}".format(shared_state.current_command.response.get_smtp_response())
-        f.write(response_output)
+    def handle_data_end(self, shared_state: SharedState):
+        if self._f is not None:
+            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")
+            self._f.write("\r\n< {} End of DATA\r\n".format(timestamp))
 
-    def _write(self, f, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
+            # Put the response together
+            response_output = "< (No response)"
+            if shared_state.current_command.response:
+                response_output = "< {}".format(shared_state.current_command.response.get_smtp_response())
+            self._f.write(response_output)
+
+    def _write(self, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
         # Put the command together
         command_output = "> {} [buffer: {}] {} {}\r\n".format(timestamp, buffer_state, command, argument)
         if not argument:
             command_output = "> {} [buffer: {}] {}\r\n".format(timestamp, buffer_state, command)
 
         # Write the command out to the file
-        f.write(command_output)
+        self._f.write(command_output)
 
         # Put the response together
         response_output = "< (No response)"
         if response:
             response_output = "< {}".format(response)
 
-        f.write(response_output)
+        self._f.write(response_output)
 
-    def _get_handle(self, shared_state: SharedState):
-        if hasattr(shared_state, "transaction_log"):
-            return shared_state.transaction_log.f
+    def _create_new_transaction_log(self, shared_state: SharedState):
+        if self._config["log_path"]:
+            try:
+                if not os.path.isdir(self._config["log_path"]):
+                    os.mkdir(self._config["log_path"])
+                filename = "{}-{}-{}.log".format(time.strftime("%Y%m%dT%H%M%S"), shared_state.remote_ip,
+                                                 shared_state.transaction_id)
+                full_path = os.path.join(self._config["log_path"], filename)
+
+                self._f = open(full_path, "w")
+                self._logger.info("Transaction log file created: %s", full_path)
+            except Exception as e:
+                self._logger.error("Could not open transaction log in %s (%s): "
+                                   "logging disabled for this transaction", self._config["log_path"], e)
         else:
-            shared_state.transaction_log = self._TransactionLogSharedState()
-
-            if self._config["log_path"]:
-                try:
-                    # Make sure the directory exists
-                    if not os.path.isdir(self._config["log_path"]):
-                        os.mkdir(self._config["log_path"])
-                    filename = "{}-{}-{}.log".format(time.strftime("%Y%m%dT%H%M%S"), shared_state.remote_ip,
-                                                     shared_state.transaction_id)
-                    full_path = os.path.join(self._config["log_path"], filename)
-
-                    shared_state.transaction_log.f = open(full_path, "w")
-                    self._logger.info("Transaction log file created: %s", full_path)
-
-                    return shared_state.transaction_log.f
-                except Exception as e:
-                    self._logger.error("Could not open transaction log in %s (%s): "
-                                       "logging disabled for this transaction", self._config["log_path"], e)
-            else:
-                self._logger.warning("Transaction logger has not been configured; transaction logs have been disabled")
+            self._logger.warning("Transaction logger has not been configured; transaction logs have been disabled")
 
 
 class CommandLog(TransactionLog):
-    def _write(self, f, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
+    def _write(self, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
         command_output = "> {} [buffer: {}] {} {}\r\n".format(timestamp, buffer_state, command, argument)
         if not argument:
             command_output = "> {} [buffer: {}] {}\r\n".format(timestamp, buffer_state, command)
 
-        f.write(command_output)
+        self._f.write(command_output)
 
 
 class ResponseLog(TransactionLog):
-    def _write(self, f, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
+    def _write(self, timestamp: str, buffer_state: str, command: str, argument: str, response: str):
         response_output = "< {} (No response)".format(timestamp)
         if response:
             response_output = "< {} {}".format(timestamp, response)
 
-        f.write(response_output)
+        self._f.write(response_output)

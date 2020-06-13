@@ -1,5 +1,7 @@
+from logging import Logger
 from socket import socket
 
+from rsmtpd import ConfigLoader
 from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.exceptions import RemoteConnectionClosedException
 from rsmtpd.handlers.base_command import BaseCommand
@@ -19,96 +21,88 @@ class Proxy(BaseCommand, BaseDataCommand):
         "port": None
     }
 
-    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
-        sock = None
-        if hasattr(shared_state, "proxy"):
-            sock = shared_state.proxy["socket"]
-        else:
-            shared_state.proxy = {
-                "socket": None,
-                "smtp_socket": None,
-                "helo_response": None
-            }
-        cmd = command.upper()
+    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = ""):
+        super().__init__(logger, config_loader, config_suffix, Proxy._default_config)
+        self._socket: socket
+        self._smtp_socket: SMTPSocket
+        self._helo_response: str = ""
 
+    def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
+        cmd = command.upper()
         try:
             if cmd == "__OPEN__":
-                sock, response = self._connect_to_remote_server(shared_state)
+                response = self._connect_to_remote_server(shared_state)
             elif cmd == "STARTTLS":
                 response = SmtpResponse220StartTLS()
-            elif cmd in ["HELO", "EHLO"] and shared_state.proxy["helo_response"]:
-                response = shared_state.proxy["helo_response"]
+            elif cmd in ["HELO", "EHLO"] and self._helo_response:
+                response = self._helo_response
             else:
-                smtp_socket = shared_state.proxy["smtp_socket"]
-                if command.upper() == "EHLO":
+                if cmd == "EHLO":
                     shared_state.esmtp_capable = True
-                smtp_socket.write(self._create_command(command, argument))
+                self._smtp_socket.write(self._create_command(command, argument))
 
                 # TODO: Detect and enable UTF-8 support
-                data = self._read_multiline_response(smtp_socket).decode("US-ASCII")
+                data = self._read_multiline_response().decode("US-ASCII")
                 response = self._parse_and_generate_response(data, shared_state, command)
 
             if response.get_action() in [CLOSE, FORCE_CLOSE]:
-                self._disconnect_from_remote_server(sock)
+                self._disconnect_from_remote_server()
             return response
         except RemoteConnectionClosedException:
-            self._disconnect_from_remote_server(sock)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Connection lost", action=CLOSE)
-        except Exception:
-            self._disconnect_from_remote_server(sock)
+        except Exception as e:
+            self._logger.error(e)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Unknown error", action=CLOSE)
 
-    def _connect_to_remote_server(self, shared_state: SharedState) -> (socket, BaseResponse):
-        config = self._load_config(self._default_config)
-        sock = socket()
-        self._logger.info("Connecting to {} port {}".format(config["host"], config["port"]))
-        sock.connect((config["host"], config["port"]))
-        shared_state.proxy["socket"] = sock
-        smtp_socket = SMTPSocket(sock)
-        shared_state.proxy["smtp_socket"] = smtp_socket
+    def _connect_to_remote_server(self, shared_state: SharedState) -> BaseResponse:
+        self._socket = socket()
+        self._logger.info("Connecting to {} port {}".format(self._config["host"], self._config["port"]))
+        self._socket.connect((self._config["host"], self._config["port"]))
+        self._smtp_socket = SMTPSocket(self._socket)
         # TODO: Handle UTF-8
-        data = smtp_socket.read_line().decode("US-ASCII")
-        return sock, self._parse_and_generate_response(data, shared_state)
+        data = self._smtp_socket.read_line().decode("US-ASCII")
+        return self._parse_and_generate_response(data, shared_state)
 
-    def _disconnect_from_remote_server(self, sock: socket) -> None:
-        if sock:
+    def _disconnect_from_remote_server(self) -> None:
+        if self._socket:
             try:
                 self._logger.info("Disconnecting from remote host")
-                sock.close()
+                self._socket.close()
+                self._socket = None
             except Exception:
                 pass
 
     def handle_data(self, data: bytes, shared_state: SharedState) -> BaseResponse:
-        sock = shared_state.proxy["socket"]
-        smtp_socket = shared_state.proxy["smtp_socket"]
         try:
-            smtp_socket.write(data)
+            self._smtp_socket.write(data)
         except RemoteConnectionClosedException:
-            self._disconnect_from_remote_server(sock)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Connection lost", action=CLOSE)
-        except Exception:
-            self._disconnect_from_remote_server(sock)
+        except Exception as e:
+            self._logger.error(e)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Unknown error", action=CLOSE)
 
     def handle_data_end(self, shared_state: SharedState) -> BaseResponse:
-        sock = shared_state.proxy["socket"]
-        smtp_socket = shared_state.proxy["smtp_socket"]
         try:
-            smtp_socket.write(b".\r\n")
-            data = self._read_multiline_response(smtp_socket).decode("US-ASCII")
+            self._smtp_socket.write(b".\r\n")
+            data = self._read_multiline_response().decode("US-ASCII")
             return self._parse_and_generate_response(data, shared_state)
         except RemoteConnectionClosedException:
-            self._disconnect_from_remote_server(sock)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Connection lost", action=CLOSE)
-        except Exception:
-            self._disconnect_from_remote_server(sock)
+        except Exception as e:
+            self._logger.error(e)
+            self._disconnect_from_remote_server()
             return ProxyResponse(500, "Unknown error", action=CLOSE)
 
-    def _read_multiline_response(self, smtp_socket: SMTPSocket) -> bytes:
-        line = smtp_socket.read_line()
+    def _read_multiline_response(self) -> bytes:
+        line = self._smtp_socket.read_line()
         data = line
         while line[3] != 32:  # space
-            line = smtp_socket.read_line()
+            line = self._smtp_socket.read_line()
             if len(line) == 0:
                 break
             data += line
@@ -155,7 +149,7 @@ class Proxy(BaseCommand, BaseDataCommand):
             response = ProxyResponse(smtp_code, message, multi_line_message)
             if cmd == "HELO" or cmd == "EHLO":
                 # Cache HELO/EHLO response for TLs reset without STARTTLS
-                shared_state.proxy["helo_response"] = response
+                self._helo_response = response
                 if shared_state.tls_available and not shared_state.tls_enabled:
                     multi_line_message_with_starttls = multi_line_message.copy()
                     multi_line_message_with_starttls.append("STARTTLS")
