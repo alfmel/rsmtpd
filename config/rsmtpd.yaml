@@ -6,8 +6,9 @@ address: localhost
 # Port number to listen on (port 25 not yet supported)
 port: 8025
 
-# User to run as if started by root (not yet supported)
-user: nobody
+# User and group to run as (comment out to disable)
+#user: nobody
+#group: nobody
 
 # Run in background (not yet supported)
 background: false

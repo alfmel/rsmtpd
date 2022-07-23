@@ -51,6 +51,7 @@ class Worker(object):
         self.__config_loader = config_loader
         self.__logger_factory = logger_factory
         self.__logger = logger_factory.get_module_logger(self)
+        self.__handler_instances = {}
         self._handler_config = None
         self._shared_state = None
 
@@ -83,7 +84,7 @@ class Worker(object):
                 self.__logger.debug("%s Received command \"%s\" with argument of \"%s\"",
                                     self._shared_state.transaction_id, command, argument)
 
-            # Run the command
+            # Handle the command
             response = None
             if command is None:
                 response = SmtpResponse500()
@@ -277,6 +278,10 @@ class Worker(object):
 
     def _get_handler(self, command_config: Dict, class_type: ClassVar):
         if command_config:
+            instance_name = "{}::{}".format(command_config["module"], command_config["class"])
+            if instance_name in self.__handler_instances:
+                return self.__handler_instances[instance_name]
+
             try:
                 module = __import__(command_config["module"])
                 for sub in command_config["module"].split(".")[1:]:
@@ -290,6 +295,7 @@ class Worker(object):
                                          self.__config_loader, "")
                     self.__logger.debug("Class %s in module %s successfully instantiated", command_config["class"],
                                         command_config["module"])
+                    self.__handler_instances[instance_name] = instance
                     return instance
                 else:
                     self.__logger.error("Class %s in module %s does not inherit from BaseCommand; handler ignored",

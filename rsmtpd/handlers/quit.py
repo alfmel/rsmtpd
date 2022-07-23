@@ -10,7 +10,6 @@ class Quit(BaseCommand):
     """
 
     def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
-        # Note: this command does not have any configuration
         if argument:
             return SmtpResponse501()
         else:

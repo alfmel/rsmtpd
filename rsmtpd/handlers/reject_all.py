@@ -1,3 +1,5 @@
+from logging import Logger
+from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.handlers.base_command import BaseCommand, SharedState
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 from rsmtpd.response.smtp_354 import SmtpResponse354, BaseResponse
@@ -16,9 +18,11 @@ class RejectAll(BaseCommand, BaseDataCommand):
         "close_connection": True
     }
 
+    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = ""):
+        super().__init__(logger, config_loader, config_suffix, RejectAll._default_config)
+
     def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
-        config = self._load_config(self._default_config)
-        if config["close_connection"]:
+        if self._config["close_connection"]:
             return SmtpResponse521(close_on_connect=True)
         elif command.upper() == "DATA":
             return SmtpResponse354()

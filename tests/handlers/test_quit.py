@@ -1,7 +1,6 @@
 from logging import Logger
 from unittest import TestCase
-
-from rsmtpd import ConfigLoader
+from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.handlers.quit import Quit
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.smtp_221 import SmtpResponse221

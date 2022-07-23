@@ -2,8 +2,7 @@ import ssl
 from socket import socket
 from ssl import SSLContext
 from typing import Dict, List
-
-from rsmtpd import LoggerFactory
+from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_454 import SmtpResponse454
 
