@@ -1,12 +1,12 @@
 from logging import Logger
-from unittest import TestCase
-
-from rsmtpd import ConfigLoader, LoggerFactory
+from rsmtpd.core.config_loader import ConfigLoader
+from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.handlers.unknown_command import UnknownCommand
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.action import CLOSE, OK, CONTINUE
 from rsmtpd.response.smtp_500 import SmtpResponse500
 from tests.mocks import MockConfigLoader, StubLoggerFactory
+from unittest import TestCase
 
 
 class TestRejectAllHandler(TestCase):

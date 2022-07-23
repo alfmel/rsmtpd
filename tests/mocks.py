@@ -1,9 +1,9 @@
 from logging import Logger
+from rsmtpd.core.config_loader import ConfigLoader
+from rsmtpd.core.logger_factory import LoggerFactory
 from socket import socket
 from typing import Dict
 from unittest.mock import Mock
-
-from rsmtpd import ConfigLoader, LoggerFactory
 
 
 class StubLoggerFactory(LoggerFactory):

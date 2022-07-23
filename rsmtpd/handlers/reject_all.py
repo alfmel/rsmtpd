@@ -1,7 +1,5 @@
 from logging import Logger
-from typing import Dict
-
-from rsmtpd import ConfigLoader
+from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.handlers.base_command import BaseCommand, SharedState
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 from rsmtpd.response.smtp_354 import SmtpResponse354, BaseResponse
