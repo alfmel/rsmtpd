@@ -12,8 +12,8 @@ class LoggerFactory(object):
     __logger = None
     __log_level = None
 
-    def __init__(self, path: str=None, level: str="info"):
-        level_lower = str.lower(level)
+    def __init__(self, path: str = None, level: str = "info"):
+        level_lower = str.lower(level or "info")
         if level_lower == "critical":
             self.__log_level = logging.CRITICAL
         elif level_lower == "error":
