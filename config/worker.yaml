@@ -1,5 +1,5 @@
 # Configuration file for the RSMTPD worker thread
 
-# The name of the command handler configuration (as suffix). For example, if you set this value to reject_all, the  full
+# The name of the command handler configuration (as suffix). For example, if you set this value to reject_all, the full
 # configuration file name should be "command_handler_reject_all.yaml".
 command_handler: reject_all

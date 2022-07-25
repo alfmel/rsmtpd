@@ -65,7 +65,7 @@ class Worker(object):
         # Initialize the shared state
         self._shared_state = SharedState(remote_address, tls.enabled())
         self.__logger.info("%s Starting SMTP session with %s:%s", self._shared_state.transaction_id,
-                           self._shared_state.remote_ip, self._shared_state.remote_port)
+                           self._shared_state.client.ip, self._shared_state.client.port)
 
         # Initialize the main command loop with the __OPEN__ command
         command = "__OPEN__"
@@ -101,8 +101,8 @@ class Worker(object):
 
             if response.get_action() == FORCE_CLOSE:
                 self.__logger.info("%s Forcefully ending SMTP session with %s:%s as requested by command handler",
-                                   self._shared_state.transaction_id, self._shared_state.remote_ip,
-                                   self._shared_state.remote_port)
+                                   self._shared_state.transaction_id, self._shared_state.client.ip,
+                                   self._shared_state.client.port)
                 return
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
@@ -127,8 +127,8 @@ class Worker(object):
             # TODO: Handle all actions
             if response.get_action() == CLOSE:
                 self.__logger.info("%s Ending SMTP session with %s:%s as requested by command handler",
-                                   self._shared_state.transaction_id, self._shared_state.remote_ip,
-                                   self._shared_state.remote_port)
+                                   self._shared_state.transaction_id, self._shared_state.client.ip,
+                                   self._shared_state.client.port)
                 return
             elif response.get_action() == FORCE_CLOSE:
                 return
