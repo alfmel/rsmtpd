@@ -17,10 +17,14 @@ class Client(object):
     # Whether TLS has been enabled in the session
     tls_enabled: bool = False
 
+    # The name given by the client during HELO/EHLO
+    advertised_name: str = None
+
     def __init__(self, remote_address: (str, int), tls_available=False):
         self.ip = remote_address[0]
         self.port = remote_address[1]
         self.tls_available = tls_available
+        self.advertised_name = "[{}:{}]".format(self.ip, self.port)
 
 
 class CurrentCommand(object):
@@ -52,6 +56,9 @@ class SharedState(object):
 
     # Remote client connection information
     client: Client = None
+
+    # Maximum message size in bytes (returned by EHLO response and enforced by DATA handler)
+    max_message_size = 8388608
 
     # Whether the client is ESMTP capable (set by HELO or EHLO command handler)
     esmtp_capable: bool = None
