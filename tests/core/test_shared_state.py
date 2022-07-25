@@ -15,6 +15,7 @@ class TestClient(unittest.TestCase):
         self.assertEqual(client.port, test_port)
         self.assertEqual(client.tls_available, test_tls_available)
         self.assertEqual(client.tls_enabled, False)
+        self.assertEqual(client.advertised_name, "[{}:{}]".format(test_ip, test_port))
 
 
 class TestSharedState(unittest.TestCase):

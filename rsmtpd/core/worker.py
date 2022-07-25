@@ -1,7 +1,6 @@
 import copy
 import socket
 from typing import Dict, List, ClassVar
-
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.core.smtp_socket import SMTPSocket
@@ -9,7 +8,7 @@ from rsmtpd.core.tls import TLS
 from rsmtpd.exceptions import RemoteConnectionClosedException
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.base_data_command import BaseDataCommand
-from rsmtpd.handlers.shared_state import SharedState
+from rsmtpd.handlers.shared_state import CurrentCommand, SharedState
 from rsmtpd.response.action import *
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_451 import SmtpResponse451
@@ -20,8 +19,12 @@ class Worker(object):
     """
     The main worker class. All incoming connections will be handled in a worker
     """
+
+    __VERSION = "0.4.2"
+
     __default_config = {
-        "command_handler": "__default__"
+        "command_handler": "__default__",
+        "maximum_message_size_in_mb": 8
     }
 
     __default_handler = {
@@ -59,11 +62,15 @@ class Worker(object):
         smtp_socket = SMTPSocket(sock)
 
         # Load the worker and handler configurations
-        command_handler_name = self._get_worker_config()
+        worker_config = self._get_worker_config()
+        command_handler_name = worker_config["command_handler"]
         self._handler_config = self._get_handler_config(command_handler_name)
 
         # Initialize the shared state
         self._shared_state = SharedState(remote_address, tls.enabled())
+        if "maximum_message_size_in_mb" in worker_config and worker_config["maximum_message_size_in_mb"] > 0:
+            self._shared_state.max_message_size = worker_config["maximum_message_size_in_mb"] * 1048576  # MiB
+
         self.__logger.info("%s Starting SMTP session with %s:%s", self._shared_state.transaction_id,
                            self._shared_state.client.ip, self._shared_state.client.port)
 
@@ -176,18 +183,27 @@ class Worker(object):
         if self._shared_state.esmtp_capable:
             self.__logger.info("%s Sending extended response to client with SMTP code %s",
                                self._shared_state.transaction_id, response.get_code())
-            smtp_socket.write(response.get_extended_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(self.__replace_response_templates(response.get_extended_smtp_response()).encode())
         else:
             self.__logger.info("%s Sending response to client with SMTP code %s",
                                self._shared_state.transaction_id,
                                response.get_code())
-            smtp_socket.write(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
+
+    def __replace_response_templates(self, response: str) -> str:
+        response.replace("<domain>", self.__server_name)
+        response.replace("<version>", self.__VERSION)
+        response.replace("<client.ip>", self._shared_state.client.ip)
+        response.replace("<client.port>", str(self._shared_state.client.port))
+        response.replace("<client.advertised_name>", self._shared_state.client.advertised_name)
+
+        return response
 
     def _handle_command(self, command: str, argument: str, buffer_is_empty: bool) -> BaseResponse:
         command_handlers = self._get_command_config(command)
         response = None
 
-        self._shared_state.current_command = self._shared_state.CurrentCommand()
+        self._shared_state.current_command = CurrentCommand()
         self._shared_state.current_command.buffer_is_empty = buffer_is_empty
 
         for command_handler in command_handlers:
@@ -245,9 +261,8 @@ class Worker(object):
 
         return response
 
-    def _get_worker_config(self) -> str:
-        config = self.__config_loader.load(self, "", self.__default_config)
-        return config["command_handler"]
+    def _get_worker_config(self) -> Dict:
+        return self.__config_loader.load(self, "", self.__default_config)
 
     def _get_handler_config(self, handler_name) -> Dict:
         handler_config = self.__default_handler
