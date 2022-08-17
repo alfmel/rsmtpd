@@ -14,7 +14,7 @@ class BaseResponse(object):
      - An optional multi-line message as a list of strings (one per line, overridden with alt_multi_line_message param)
      - A worker action (see rsmtpd.core.worker for details)
 
-     The message may contain <domain> (including the diamonds) to insert the server's name as required by RFC 5321
+     The message may contain <server_name> (including the diamonds) to insert the server's name as required by RFC 5321
      (notably SMTP codes 220, 221 and 421 [Section 4.2.3]).
     """
 

@@ -1,0 +1,2 @@
+# Where incoming mail should be temporarily stored
+mail_spool_dir: /var/tmp

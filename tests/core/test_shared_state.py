@@ -32,8 +32,13 @@ class TestSharedState(unittest.TestCase):
         self.assertEqual(shared_state.client.ip, test_ip)
         self.assertEqual(shared_state.client.port, test_port)
         self.assertEqual(shared_state.client.tls_enabled, test_tls_available)
-        self.assertIsNone(shared_state.esmtp_capable)
+        self.assertIsNone(shared_state.client_name)
+        self.assertEqual(shared_state.esmtp_capable, test_tls_available)
         self.assertIsNone(shared_state.last_command_has_standard_line_ending)
+        self.assertIsNone(shared_state.mail_from)
+        self.assertIsInstance(shared_state.recipients, set)
+        self.assertEqual(len(shared_state.recipients), 0)
+        self.assertIsNone(shared_state.data_filename)
         self.assertIsInstance(shared_state.current_command, CurrentCommand)
 
 

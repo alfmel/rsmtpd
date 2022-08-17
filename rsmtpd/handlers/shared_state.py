@@ -1,3 +1,6 @@
+from typing import Set, Union
+
+from rsmtpd.core.validation import EmailAddressParseResult, EmailAddressVerificationResult
 from uuid import uuid4
 
 
@@ -39,6 +42,23 @@ class CurrentCommand(object):
     response = None
 
 
+class ClientName(object):
+    """
+    An object for storing client greeting information
+    """
+    # The client name given by the client in HELO/EHLO command
+    name: str = None
+
+    # Whether the client name is a resolvable FQDN
+    is_valid_fqdn: bool = None
+
+    # The IP address associated with the given client name (None if not FQDN)
+    forward_dns_ip: str = None
+
+    # The reverse IP name (None if no reverse IP found)
+    reverse_dns_name: str = None
+
+
 class SharedState(object):
     """
     A shared state object that is passed to all commands.
@@ -57,14 +77,26 @@ class SharedState(object):
     # Remote client connection information
     client: Client = None
 
+    # Remote client information gathered from HELO/EHLO command
+    client_name: Union[ClientName, None] = None
+
     # Maximum message size in bytes (returned by EHLO response and enforced by DATA handler)
     max_message_size = 8388608
 
     # Whether the client is ESMTP capable (set by HELO or EHLO command handler)
-    esmtp_capable: bool = None
+    esmtp_capable: bool = False
 
     # Whether the last received command ended with proper CRLF
-    last_command_has_standard_line_ending: bool = None
+    last_command_has_standard_line_ending: Union[bool, None] = None
+
+    # The parsed response from MAIL FROM command (None if command has not been executed)
+    mail_from: Union[EmailAddressParseResult, None] = None
+
+    # The set of recipients
+    recipients: Set[EmailAddressVerificationResult] = set()
+
+    # The full path and filename where the mail DATA is stored
+    data_filename: Union[str, None] = None
 
     # An object with the current command information
     current_command: CurrentCommand = None
@@ -72,4 +104,10 @@ class SharedState(object):
     def __init__(self, remote_address, tls_available=False):
         self.transaction_id = uuid4().hex
         self.client = Client(remote_address, tls_available)
+        self.client_name = None
+        self.esmtp_capable = False
+        self.last_command_has_standard_line_ending = None
+        self.mail_from = None
+        self.recipients = set()
+        self.data_filename = None
         self.current_command = CurrentCommand()

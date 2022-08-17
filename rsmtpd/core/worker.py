@@ -20,7 +20,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.4.2"
+    __VERSION = "0.4.90"
 
     __default_config = {
         "command_handler": "__default__",
@@ -149,8 +149,10 @@ class Worker(object):
         self._shared_state.last_command_has_standard_line_ending = line_bytes[-2:] == b"\r\n"
 
         try:
-            # TODO: Handle non-ASCII encoding
-            line = line_bytes.decode("US-ASCII").strip()
+            if line_bytes.strip().endswith(" SMTPUTF8".encode()):
+                line = line_bytes.decode("UTF8").strip()
+            else:
+                line = line_bytes.decode("US-ASCII").strip()
 
             # Split the command on the first space
             split_line = line.split(" ", maxsplit=1)
@@ -191,11 +193,11 @@ class Worker(object):
             smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
 
     def __replace_response_templates(self, response: str) -> str:
-        response.replace("<domain>", self.__server_name)
-        response.replace("<version>", self.__VERSION)
-        response.replace("<client.ip>", self._shared_state.client.ip)
-        response.replace("<client.port>", str(self._shared_state.client.port))
-        response.replace("<client.advertised_name>", self._shared_state.client.advertised_name)
+        response = response.replace("<server_name>", self.__server_name)
+        response = response.replace("<version>", self.__VERSION)
+        response = response.replace("<client.ip>", self._shared_state.client.ip)
+        response = response.replace("<client.port>", str(self._shared_state.client.port))
+        response = response.replace("<client.advertised_name>", self._shared_state.client.advertised_name)
 
         return response
 
@@ -258,6 +260,10 @@ class Worker(object):
             if tmp_response is not None:
                 response = copy.deepcopy(tmp_response)
                 self._shared_state.current_command.response = copy.deepcopy(response)
+
+        if response is None:
+            self.__logger.warning("Data handlers did not return a response; rejecting message with temporary error")
+            response = SmtpResponse451()
 
         return response
 

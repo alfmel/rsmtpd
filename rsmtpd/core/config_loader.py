@@ -56,15 +56,15 @@ class ConfigLoader(object):
         else:
             self.__logger.info("Config path: %s", self.__path)
 
-    def load(self, class_ref: object, suffix: str = "", default: Dict = None):
+    def load(self, class_ref: object, suffix: str = "", default: Dict = None) -> Dict:
         """
         Load a YAML configuration for a given object based on the module or class name, with an optional suffix.
 
         If the class/object points to a class named ExtHello in the module rsmtpd.handlers.ehlo, the loader will look
         for the following files in the configuration directory in this order:
 
-          rsmtpd.handlers.ehlo.yaml
-          ehlo.yaml
+          rsmtpd.handlers.hello.yaml
+          hello.yaml
           ExtHello.yaml
 
         If a suffix of "alt" is passed with the same class reference, the loader will look for the following files in
@@ -74,8 +74,8 @@ class ConfigLoader(object):
           ehlo_alt.yaml
           ExtHello_alt.yaml
 
-        As a rule of thumb, standard rsmtpd config files should use the last part of the module name (ehlo.yaml) while
-        external modules should use the fully qualified module name (rsmtpd.john_doe.handlers.ehlo.yaml) for their
+        As a rule of thumb, standard rsmtpd config files should use the last part of the module name (hello.yaml) while
+        external modules should use the fully qualified module name (rsmtpd.john_doe.handlers.hello.yaml) for their
         configuration to avoid conflicts.
 
         :param class_ref: The class or object to load the config for

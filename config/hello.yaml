@@ -1,0 +1,12 @@
+# Configuration for HELO/EHLO command
+
+# Response message (see docs/response_variables.md for list of available response variables)
+message: Hello <client.advertised_name> (<client.ip> port <client.port>)
+
+# Advertise PIPELINE extension
+# The sever always supports PIPELINING. Some clients (mostly spammers) assume it is there. By not advertising it,
+# well-behaved clients will send one command at a time at the expense of slightly more "chatty" communications.
+# Ill-behaved (or poorly written) clients will ignore it.
+#
+# Future versions will allow you to filter email based on whether the client honors the absence of this extension.
+advertise_pipelining_extension: yes
