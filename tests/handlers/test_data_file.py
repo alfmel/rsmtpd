@@ -4,7 +4,7 @@ from logging import Logger
 
 from rsmtpd.core.validation import EmailAddressParseResult
 from rsmtpd.handlers.data_file import DataToFileDataHandler
-from rsmtpd.handlers.shared_state import SharedState
+from rsmtpd.handlers.shared_state import SharedState, ClientName
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -19,6 +19,7 @@ class TestDataToFileDataHandler(unittest.TestCase):
     def test_handler_methods(self):
         handler = DataToFileDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
+        shared_state.client_name = ClientName()
         shared_state.mail_from = EmailAddressParseResult()
 
         handler.handle_data(b"This is line 1\r\n", shared_state)
@@ -40,6 +41,7 @@ class TestDataToFileDataHandler(unittest.TestCase):
     def test_data_too_large(self):
         handler = DataToFileDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
+        shared_state.client_name = ClientName()
         shared_state.mail_from = EmailAddressParseResult()
         shared_state.max_message_size = 0
 

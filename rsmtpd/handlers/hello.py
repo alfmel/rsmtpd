@@ -1,4 +1,4 @@
-import socket
+from rsmtpd.core import dns
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.shared_state import SharedState, ClientName
 from rsmtpd.response.base_response import BaseResponse
@@ -28,19 +28,12 @@ class HelloHandler(BaseCommand):
         client_name = ClientName()
         client_name.name = argument.strip()
         if client_name.name and client_name.name.__contains__("."):
-            try:
-                client_name.forward_dns_ip = socket.gethostbyname(client_name.name)
-                client_name.is_valid_fqdn = True
-            except:
-                client_name.is_valid_fqdn = False
+            client_name.forward_dns_ip = dns.by_name(client_name.name, shared_state.client.ip)
+            client_name.is_valid_fqdn = bool(client_name.forward_dns_ip)
         else:
             client_name.is_valid_fqdn = False
 
-        try:
-            (name, aliasList, addressList) = socket.gethostbyaddr(shared_state.client.ip)
-            client_name.reverse_dns_name = name
-        except:
-            pass
+        client_name.reverse_dns_name = dns.by_ip(shared_state.client.ip, client_name.name)
 
         shared_state.client_name = client_name
         shared_state.client.advertised_name = client_name.name  # TODO: Should we keep two versions of this?

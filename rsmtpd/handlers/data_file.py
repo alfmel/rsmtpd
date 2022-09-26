@@ -57,7 +57,7 @@ class DataToFileDataHandler(BaseDataCommand):
         headers = "Return-Path: <{}>\r\n".format(shared_state.mail_from.email_address) + \
                   "Received: from [{}:{}] {} TLS=\r\n".format(shared_state.client.ip,
                                                               shared_state.client.port,
-                                                              "",  # TODO: Add reverse-lookup
+                                                              shared_state.client_name.reverse_dns_name,
                                                               shared_state.client.tls_enabled) + \
                   "          with helo {}\r\n".format(shared_state.client.advertised_name) + \
                   "          on {} by RSMTPD\r\n".format(datetime.now().strftime("%Y-%m-%dT%H%:M%:%S%z"))
