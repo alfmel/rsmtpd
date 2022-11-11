@@ -20,9 +20,6 @@ class ConfigLoader(object):
     TODO: Merge config files with default to ensure we have initial values
     """
 
-    __path = None
-    __logger = None
-
     def __init__(self, logger: LoggerFactory, path: str = None):
         """
         Checks to see where config files will be coming from. If no suitable directory is found, default values will
@@ -33,6 +30,7 @@ class ConfigLoader(object):
         """
 
         self.__logger = logger.get_module_logger(self)
+        self.__path = None
 
         # Check if the given path exists
         if path is not None:

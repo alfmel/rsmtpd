@@ -1,6 +1,5 @@
-from typing import List
-
 from rsmtpd.response.action import OK
+from typing import List
 
 
 class BaseResponse(object):

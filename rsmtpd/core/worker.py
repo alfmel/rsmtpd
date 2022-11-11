@@ -1,6 +1,6 @@
 import copy
 import socket
-from typing import Dict, List, ClassVar
+from typing import Dict, List
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.core.smtp_socket import SMTPSocket
@@ -20,7 +20,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.4.91"
+    __VERSION = "0.4.92"
 
     __default_config = {
         "command_handler": "__default__",
@@ -42,13 +42,6 @@ class Worker(object):
         }]
     }
 
-    # Whether the last data chunk ended with CRLF
-    __last_data_chunk_ends_with_crlf = False
-    __first_data_chunk = True
-
-    _handler_config = None
-    _shared_state = None
-
     def __init__(self, server_name: str, config_loader: ConfigLoader, logger_factory: LoggerFactory):
         self.__server_name = server_name
         self.__config_loader = config_loader
@@ -57,6 +50,8 @@ class Worker(object):
         self.__handler_instances = {}
         self._handler_config = None
         self._shared_state = None
+        self.__first_data_chunk = True
+        self.__last_data_chunk_ends_with_crlf = False
 
     def handle_client(self, sock: socket, remote_address, tls: TLS):
         smtp_socket = SMTPSocket(sock)
@@ -297,7 +292,7 @@ class Worker(object):
             command_config = self._handler_config["__DEFAULT__"]
         return command_config
 
-    def _get_handler(self, command_config: Dict, class_type: ClassVar):
+    def _get_handler(self, command_config: Dict, class_type):
         if command_config:
             instance_name = "{}::{}".format(command_config["module"], command_config["class"])
             if instance_name in self.__handler_instances:

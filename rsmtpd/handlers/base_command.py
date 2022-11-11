@@ -1,7 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from logging import Logger
 from typing import Dict
-
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.base_response import BaseResponse

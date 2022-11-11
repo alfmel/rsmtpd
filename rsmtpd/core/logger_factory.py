@@ -8,10 +8,6 @@ class LoggerFactory(object):
     calling get_module_logger() with the name of the class
     """
 
-    __path = None
-    __logger = None
-    __log_level = None
-
     def __init__(self, path: str = None, level: str = "info"):
         level_lower = str.lower(level or "info")
         if level_lower == "critical":

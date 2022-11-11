@@ -1,34 +1,34 @@
 import re
+from typing import Union
 
 
 class EmailAddressParseResult:
-    # Whether the email address is valid (local part + domain)
-    is_valid: bool = False
+    def __init__(self):
+        # Whether the email address is valid (local part + domain)
+        self.is_valid: bool = False
 
-    # The input given to validator, without extensions
-    input: str = None
+        # The input given to validator, without extensions
+        self.input: Union[str, None] = None
 
-    # The email address without name or brackets
-    email_address: str = None
+        # The email address without name or brackets
+        self.email_address: Union[str, None] = None
 
-    # The local part of the email address
-    local_part: str = None
+        # The local part of the email address
+        self.local_part: Union[str, None] = None
 
-    # The domain of the email address
-    domain: str = None
+        # The domain of the email address
+        self.domain: Union[str, None] = None
 
-    # Whether the email address was UTF8-encoded
-    is_utf8: bool = False
+        # Whether the email address was UTF8-encoded
+        self.is_utf8: bool = False
 
-    # Whether the email address was properly formatted with the <> brackets
-    contained_rfc_brackets: bool = False
+        # Whether the email address was properly formatted with the <> brackets
+        self.contained_rfc_brackets: bool = False
 
 
 class EmailAddressVerificationResult(EmailAddressParseResult):
-    # Whether the email address is deliverable (None means it has not been verified)
-    is_deliverable: bool = None
-
     def __init__(self, email_address_parse_result: EmailAddressParseResult, is_deliverable: bool = False):
+        super().__init__()
         self.is_valid = email_address_parse_result.is_valid
         self.input = email_address_parse_result.input
         self.email_address = email_address_parse_result.email_address
@@ -36,7 +36,9 @@ class EmailAddressVerificationResult(EmailAddressParseResult):
         self.domain = email_address_parse_result.domain
         self.is_utf8 = email_address_parse_result.is_utf8
         self.contained_rfc_brackets = email_address_parse_result.contained_rfc_brackets
-        self.is_deliverable = is_deliverable
+
+        # Whether the email address is deliverable
+        self.is_deliverable: bool = is_deliverable
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \

@@ -10,9 +10,6 @@ from rsmtpd.core.worker import Worker
 
 
 class Server(object):
-    __config_loader = None
-    __logger_factory = None
-    __logger = None
     __default_config = {
         "address": "127.0.0.1",
         "port": 8025,
@@ -26,13 +23,12 @@ class Server(object):
         }
     }
 
-    _config = None
-
     def __init__(self, config_loader: ConfigLoader, logger_factory: LoggerFactory):
         self.__config_loader = config_loader
         self.__logger_factory = logger_factory
         self.__logger = logger_factory.get_module_logger(self)
         self._tls = None
+        self._config = None
 
     def run(self, address=None, port=None, user=None, group=None, background=False):
         # Load the configuration
