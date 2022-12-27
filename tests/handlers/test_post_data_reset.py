@@ -1,8 +1,9 @@
 import unittest
-from rsmtpd.core.validation import EmailAddressParseResult, EmailAddressVerificationResult
 from rsmtpd.handlers.post_data_reset import PostDataResetDataHandler
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.smtp_552 import SmtpResponse552
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import StubLoggerFactory, MockConfigLoader
 
 
@@ -14,8 +15,8 @@ class TestPostDataResetDataHandlerDataHandler(unittest.TestCase):
     def test_handle_data_and_data_end(self):
         handler = PostDataResetDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
-        shared_state.mail_from = EmailAddressParseResult()
-        shared_state.recipients = [EmailAddressVerificationResult(EmailAddressParseResult(), True)]
+        shared_state.mail_from = ParsedEmailAddress()
+        shared_state.recipients = [ValidatedRecipient(ParsedEmailAddress(), True)]
         shared_state.data_filename = "/var/tmp/rsmtpd-unit-test-test-filename"
 
         handler.handle_data(b'', shared_state)

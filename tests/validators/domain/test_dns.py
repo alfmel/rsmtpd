@@ -1,5 +1,5 @@
-from rsmtpd.core import dns
 import unittest
+from rsmtpd.validators.domain import dns
 
 
 class TestDns(unittest.TestCase):

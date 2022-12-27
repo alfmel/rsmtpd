@@ -1,9 +1,8 @@
 import unittest
+from rsmtpd.validators.email_address.parser import *
 
-from rsmtpd.core.validation import *
 
-
-class TestValidateEmailAddress(unittest.TestCase):
+class TestParseEmailAddressInput(unittest.TestCase):
     def test_standard_entry(self):
         result = parse_email_address_input("<first.last@example.com>")
         self.assertTrue(result.is_valid)

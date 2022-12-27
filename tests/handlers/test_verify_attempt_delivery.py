@@ -1,6 +1,4 @@
 import unittest
-from rsmtpd.core.validation import EmailAddressParseResult, EmailAddressVerificationResult
-from rsmtpd.handlers.reset import ResetHandler
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.handlers.verify_attempt_delivery import VerifyAttemptDeliveryHandler
 from tests.mocks import StubLoggerFactory, MockConfigLoader

@@ -1,9 +1,9 @@
 import unittest
 from logging import Logger
-
-from rsmtpd.core.validation import EmailAddressParseResult, EmailAddressVerificationResult
 from rsmtpd.handlers.data import DataHandler
 from rsmtpd.handlers.shared_state import SharedState
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -43,7 +43,7 @@ class TestDataHandler(unittest.TestCase):
         handler = DataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = "localhost"
-        shared_state.mail_from = EmailAddressParseResult()
+        shared_state.mail_from = ParsedEmailAddress()
 
         response = handler.handle("DATA", "", shared_state)
         self.assertEqual(response.get_code(), 503)
@@ -53,10 +53,10 @@ class TestDataHandler(unittest.TestCase):
         handler = DataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = "localhost"
-        shared_state.mail_from = EmailAddressParseResult()
-        recipient = EmailAddressParseResult()
+        shared_state.mail_from = ParsedEmailAddress()
+        recipient = ParsedEmailAddress()
         recipient.email_address = "test@example.com"
-        shared_state.recipients.add(EmailAddressVerificationResult(recipient))
+        shared_state.recipients.add(ValidatedRecipient(recipient))
 
         response = handler.handle("DATA", "", shared_state)
         self.assertEqual(response.get_code(), 354)

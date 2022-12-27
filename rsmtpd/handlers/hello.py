@@ -1,8 +1,8 @@
-from rsmtpd.core import dns
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.shared_state import SharedState, ClientName
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_250 import SmtpResponse250
+from rsmtpd.validators.domain import dns
 
 
 class HelloHandler(BaseCommand):

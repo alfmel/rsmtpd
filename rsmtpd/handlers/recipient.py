@@ -1,4 +1,3 @@
-from rsmtpd.core.validation import parse_email_address_input, EmailAddressVerificationResult
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.base_response import BaseResponse
@@ -6,6 +5,8 @@ from rsmtpd.response.smtp_250 import SmtpResponse250
 from rsmtpd.response.smtp_501 import SmtpResponse501
 from rsmtpd.response.smtp_503 import SmtpResponse503
 from rsmtpd.response.smtp_504 import SmtpResponse504
+from rsmtpd.validators.email_address.parser import parse_email_address_input
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 
 
 class RecipientHandler(BaseCommand):
@@ -26,7 +27,7 @@ class RecipientHandler(BaseCommand):
             return SmtpResponse501("Email address does not appear to be valid")
 
         # TODO: Verify email address is accepted by this server
-        verified_email = EmailAddressVerificationResult(parsed_email, True)
+        verified_email = ValidatedRecipient(parsed_email, True)
 
         shared_state.recipients.add(verified_email)
 

@@ -1,6 +1,6 @@
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from typing import Set, Union
-
-from rsmtpd.core.validation import EmailAddressParseResult, EmailAddressVerificationResult
 from uuid import uuid4
 
 
@@ -90,10 +90,10 @@ class SharedState(object):
     last_command_has_standard_line_ending: Union[bool, None] = None
 
     # The parsed response from MAIL FROM command (None if command has not been executed)
-    mail_from: Union[EmailAddressParseResult, None] = None
+    mail_from: Union[ParsedEmailAddress, None] = None
 
     # The set of recipients
-    recipients: Set[EmailAddressVerificationResult] = set()
+    recipients: Set[ValidatedRecipient] = set()
 
     # The full path and filename where the mail DATA is stored
     data_filename: Union[str, None] = None

@@ -1,4 +1,3 @@
-from rsmtpd.core.validation import parse_email_address_input
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.base_response import BaseResponse
@@ -6,6 +5,7 @@ from rsmtpd.response.smtp_250 import SmtpResponse250
 from rsmtpd.response.smtp_501 import SmtpResponse501
 from rsmtpd.response.smtp_503 import SmtpResponse503
 from rsmtpd.response.smtp_504 import SmtpResponse504
+from rsmtpd.validators.email_address.parser import parse_email_address_input
 
 
 class MailHandler(BaseCommand):

@@ -1,8 +1,8 @@
 import unittest
 from logging import Logger
-from rsmtpd.core.validation import EmailAddressVerificationResult
 from rsmtpd.handlers.recipient import RecipientHandler
 from rsmtpd.handlers.shared_state import SharedState, ClientName
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -44,7 +44,7 @@ class TestRecipientHandler(unittest.TestCase):
         self.assertEqual(response.get_code(), 250)
         recipient_list = list(shared_state.recipients)
         self.assertEqual(len(recipient_list), 1)
-        self.assertIsInstance(recipient_list[0], EmailAddressVerificationResult)
+        self.assertIsInstance(recipient_list[0], ValidatedRecipient)
         self.assertEqual(recipient_list[0].email_address, "test@example.com")
 
     def test_handle_no_bracket(self):
@@ -57,7 +57,7 @@ class TestRecipientHandler(unittest.TestCase):
 
         self.assertEqual(response.get_code(), 250)
         recipient_list = list(shared_state.recipients)
-        self.assertIsInstance(recipient_list[0], EmailAddressVerificationResult)
+        self.assertIsInstance(recipient_list[0], ValidatedRecipient)
         self.assertEqual(recipient_list[0].email_address, "test@example.com")
 
     def test_handle_multiple(self):

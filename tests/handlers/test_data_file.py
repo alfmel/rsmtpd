@@ -1,10 +1,9 @@
 import os.path
 import unittest
 from logging import Logger
-
-from rsmtpd.core.validation import EmailAddressParseResult
 from rsmtpd.handlers.data_file import DataToFileDataHandler
 from rsmtpd.handlers.shared_state import SharedState, ClientName
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -20,7 +19,7 @@ class TestDataToFileDataHandler(unittest.TestCase):
         handler = DataToFileDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        shared_state.mail_from = EmailAddressParseResult()
+        shared_state.mail_from = ParsedEmailAddress()
 
         handler.handle_data(b"This is line 1\r\n", shared_state)
         handler.handle_data(b"This is line 2\r\n", shared_state)
@@ -42,7 +41,7 @@ class TestDataToFileDataHandler(unittest.TestCase):
         handler = DataToFileDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        shared_state.mail_from = EmailAddressParseResult()
+        shared_state.mail_from = ParsedEmailAddress()
         shared_state.max_message_size = 0
 
         handler.handle_data(b"This should fail\r\n", shared_state)
@@ -57,7 +56,7 @@ class TestDataToFileDataHandler(unittest.TestCase):
         self._mock_config_loader.set_mock_config({"mail_spool_dir": "/rsmtpd/non-existent/path/to/force/failure"})
         handler = DataToFileDataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
-        shared_state.mail_from = EmailAddressParseResult()
+        shared_state.mail_from = ParsedEmailAddress()
 
         handler.handle_data(b"Some mail data", shared_state)
         response = handler.handle_data_end(shared_state)

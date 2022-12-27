@@ -1,8 +1,8 @@
 import unittest
 from logging import Logger
-from rsmtpd.core.validation import EmailAddressParseResult
 from rsmtpd.handlers.mail import MailHandler
 from rsmtpd.handlers.shared_state import SharedState, ClientName
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -42,7 +42,7 @@ class TestMailHandler(unittest.TestCase):
         response = handler.handle("MAIL", "FROM:<test@example.com>", shared_state)
 
         self.assertEqual(response.get_code(), 250)
-        self.assertIsInstance(shared_state.mail_from, EmailAddressParseResult)
+        self.assertIsInstance(shared_state.mail_from, ParsedEmailAddress)
         self.assertEqual(shared_state.mail_from.email_address, "test@example.com")
 
     def test_handle_no_bracket(self):
@@ -54,7 +54,7 @@ class TestMailHandler(unittest.TestCase):
         response = handler.handle("MAIL", "FROM:test@example.com", shared_state)
 
         self.assertEqual(response.get_code(), 250)
-        self.assertIsInstance(shared_state.mail_from, EmailAddressParseResult)
+        self.assertIsInstance(shared_state.mail_from, ParsedEmailAddress)
         self.assertEqual(shared_state.mail_from.email_address, "test@example.com")
 
 

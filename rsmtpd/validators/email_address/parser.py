@@ -2,12 +2,12 @@ import re
 from typing import Union
 
 
-class EmailAddressParseResult:
+class ParsedEmailAddress:
     def __init__(self):
         # Whether the email address is valid (local part + domain)
         self.is_valid: bool = False
 
-        # The input given to validator, without extensions
+        # The raw input as sent by the client
         self.input: Union[str, None] = None
 
         # The email address without name or brackets
@@ -26,30 +26,8 @@ class EmailAddressParseResult:
         self.contained_rfc_brackets: bool = False
 
 
-class EmailAddressVerificationResult(EmailAddressParseResult):
-    def __init__(self, email_address_parse_result: EmailAddressParseResult, is_deliverable: bool = False):
-        super().__init__()
-        self.is_valid = email_address_parse_result.is_valid
-        self.input = email_address_parse_result.input
-        self.email_address = email_address_parse_result.email_address
-        self.local_part = email_address_parse_result.local_part
-        self.domain = email_address_parse_result.domain
-        self.is_utf8 = email_address_parse_result.is_utf8
-        self.contained_rfc_brackets = email_address_parse_result.contained_rfc_brackets
-
-        # Whether the email address is deliverable
-        self.is_deliverable: bool = is_deliverable
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and \
-               self.email_address.lower() == other.email_address.lower()
-
-    def __hash__(self):
-        return hash(self.email_address.lower())
-
-
-def parse_email_address_input(email_address_input: str) -> EmailAddressParseResult:
-    result = EmailAddressParseResult()
+def parse_email_address_input(email_address_input: str) -> ParsedEmailAddress:
+    result = ParsedEmailAddress()
     if email_address_input.endswith(" SMTPUTF8"):  # Note space at start to conform with RFC 6531
         result.is_utf8 = True
         email_address_input = email_address_input.replace(" SMTPUTF8", "").strip()
