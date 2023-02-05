@@ -3,6 +3,7 @@ from logging import Logger
 from rsmtpd.handlers.recipient import RecipientHandler
 from rsmtpd.handlers.shared_state import SharedState, ClientName
 from rsmtpd.validators.email_address.recipient import ValidatedRecipient
+from rsmtpd.validators.email_address.simple_recipient_validator import SimpleRecipientValidator
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -11,11 +12,18 @@ class TestRecipientHandler(unittest.TestCase):
 
     def setUp(self):
         self._mock_logger = StubLoggerFactory().get_module_logger(None)
+        validator_config = {
+            "allow_soft_delivery": False,
+            "allow_tagging": False,
+            "domains": {"example.com": {"recipients": ["test", "test1", "test2"]}}
+        }
+        self._recipient_validator = SimpleRecipientValidator(self._mock_logger, MockConfigLoader(StubLoggerFactory()),
+                                                             "", validator_config)
 
     def test_no_helo(self):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         response = handler.handle("RCPT", "TO:<test@example.com>", shared_state)
 
@@ -26,7 +34,7 @@ class TestRecipientHandler(unittest.TestCase):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         response = handler.handle("RCPT", "SEND:<test@example.com>", shared_state)
 
@@ -37,7 +45,7 @@ class TestRecipientHandler(unittest.TestCase):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         response = handler.handle("RCPT", "TO:<test@example.com>", shared_state)
 
@@ -51,7 +59,7 @@ class TestRecipientHandler(unittest.TestCase):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         response = handler.handle("RCPT", "to:test@example.com", shared_state)
 
@@ -60,11 +68,11 @@ class TestRecipientHandler(unittest.TestCase):
         self.assertIsInstance(recipient_list[0], ValidatedRecipient)
         self.assertEqual(recipient_list[0].email_address, "test@example.com")
 
-    def test_handle_multiple(self):
+    def test_handle_multiple_recipients(self):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         handler.handle("RCPT", "TO:<test1@example.com>", shared_state)
         response = handler.handle("RCPT", "TO:<test2@example.com>", shared_state)
@@ -76,7 +84,7 @@ class TestRecipientHandler(unittest.TestCase):
         mock_config_loader = MockConfigLoader(StubLoggerFactory())
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
-        handler = RecipientHandler(self._mock_logger, mock_config_loader)
+        handler = RecipientHandler(self._mock_logger, mock_config_loader, "", {}, self._recipient_validator)
 
         handler.handle("RCPT", "TO:<test@example.com>", shared_state)
         response = handler.handle("RCPT", "TO:<Test@example.com>", shared_state)

@@ -1,0 +1,24 @@
+# These global options may be overriden (where applicable) at the domain and recipient levels
+allow_soft_delivery: yes
+allow_tagging: yes
+tagging_characters: "+" # You may specify multiple characters inside the string, e.g., "+-_"
+
+# You must specify a list of domains handled by the server
+domains:
+  example.com:
+    # Override options here
+    allow_soft_delivery: yes
+    recipients:
+      # Recipients may be a simple string with the recipient name (no domain) or dictionary with options
+      - postmaster:
+        allow_tagging: no
+      - test
+      - webmaster:
+        # Aliases use deliver_to entry, with the full address
+        deliver_to: test@example.com
+  example.net:
+    allow_tagging: no
+    recipients:
+      - postmaster:
+        allow_tagging: no
+      - test

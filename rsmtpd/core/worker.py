@@ -20,7 +20,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.4.92"
+    __VERSION = "0.4.93"
 
     __default_config = {
         "command_handler": "__default__",
