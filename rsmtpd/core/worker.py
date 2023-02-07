@@ -3,6 +3,7 @@ import socket
 from typing import Dict, List
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
+from rsmtpd.core.class_factory import ClassFactory
 from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.core.tls import TLS
 from rsmtpd.exceptions import RemoteConnectionClosedException
@@ -47,6 +48,7 @@ class Worker(object):
         self.__config_loader = config_loader
         self.__logger_factory = logger_factory
         self.__logger = logger_factory.get_module_logger(self)
+        self.__class_factory = ClassFactory(logger_factory, config_loader)
         self.__handler_instances = {}
         self._handler_config = None
         self._shared_state = None
@@ -294,30 +296,5 @@ class Worker(object):
 
     def _get_handler(self, command_config: Dict, class_type):
         if command_config:
-            instance_name = "{}::{}".format(command_config["module"], command_config["class"])
-            if instance_name in self.__handler_instances:
-                return self.__handler_instances[instance_name]
-
-            try:
-                module = __import__(command_config["module"])
-                for sub in command_config["module"].split(".")[1:]:
-                    module = getattr(module, sub)
-                class_ref = getattr(module, command_config["class"])
-                if issubclass(class_ref, class_type):
-                    self.__logger.debug("Instantiating class %s in module %s", command_config["class"],
-                                        command_config["module"])
-                    # TODO: Implement suffixes
-                    instance = class_ref(self.__logger_factory.get_child_logger(command_config["class"]),
-                                         self.__config_loader, "")
-                    self.__logger.debug("Class %s in module %s successfully instantiated", command_config["class"],
-                                        command_config["module"])
-                    self.__handler_instances[instance_name] = instance
-                    return instance
-                else:
-                    self.__logger.error("Class %s in module %s does not inherit from BaseCommand; handler ignored",
-                                        command_config["class"], command_config["module"])
-                    return None
-            except Exception as e:
-                self.__logger.error("Unable to load class: %s.%s does not exist (%s)", command_config["module"],
-                                    command_config["class"], e)
-                return None
+            return self.__class_factory.get_instance(command_config["module"], command_config["class"], class_type)
+        return None
