@@ -4,15 +4,19 @@ RSMTPD is a modular and configurable SMTP server designed to improve the researc
 email-related topics.
 
 ## Status
-RSMTPD is still in early alpha. The latest 0.3. release is capable of:
-* Running an SMTP server on a non-privileged port
-* Respond SMTP 521 (RFC 7504) to any command presented
+RSMTPD is now at version 0.5.0 and supports the following features:
+* Running as full, nearly RFC-5321 compliant server capable of delivering email through dovecot-lda
+* Running as non-working email server with SMTP 521 response (RFC 7504) to any command presented
 * Acting as a proxy to another full SMTP server, including TLS and SNI
 * Logging commands and responses to transaction logs
 
-## ROAD MAP
+Unsupported features:
+* SFP/SenderID
+* Signature verifications
+* Any other form of Spam filtering
 
-* Version 0.5.0: Full RFC 5321 command support with email delivery via pipes
+
+## ROAD MAP
 * Version 0.6.0: Basic spam-reducing functionality (SPF, Sender ID, reputation tracking)
 * ...
 * Version 0.9.0: First beta release, internal API freeze
@@ -39,7 +43,11 @@ source venv/bin/activate.sh
 pip install -r requirements.txt
 ```
 
-3. Run the server:
+3. Modify the configuration files in `config` to meet your needs. (It is recommended to make a copy of the config
+directory, like to `/etc/rsmptd` and modify the copy. You can specify the config file at start-up with the
+`-c /path/to/config` argument.)
+
+4. Run the server:
 ```commandline
 ./rsmtpd.py
 ```
