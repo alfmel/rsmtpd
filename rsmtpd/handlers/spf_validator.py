@@ -30,11 +30,12 @@ class SpfValidator(BaseCommand):
 
         if result in ["permerror", "fail", "softfail"]:
             shared_state.mail_from.is_valid = False
-            self._logger.warning(f"Client failed SPF check: {result}, {message}")
+            self._logger.warning(f"Client failed SPF check: {result} {message}")
             return SmtpResponse550("Sender Policy Framework says you are not authorized")
         elif result in ["temperror"]:
-            self._logger.warning(f"Error performing SPF check: {result}, {message}")
+            self._logger.warning(f"Error performing SPF check: {result} {message}")
             shared_state.mail_from.is_valid = False
             return SmtpResponse450("Temporary error while applying Sender Policy Framework; please try again later")
 
+        self._logger.debug(f"SPF check passed: {result} {message}")
         return shared_state.current_command.response
