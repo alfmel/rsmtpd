@@ -11,6 +11,10 @@ EHLO:
   - module: rsmtpd.handlers.hello
     class: HelloHandler
 
+STARTTLS:
+  - module: rsmtpd.handlers.starttls
+    class: StartTLS
+
 MAIL:
   - module: rsmtpd.handlers.mail
     class: MailHandler
