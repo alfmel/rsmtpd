@@ -26,7 +26,7 @@ class ParsedEmailAddress:
         self.contained_rfc_brackets: bool = False
 
 
-def parse_email_address_input(email_address_input: str) -> ParsedEmailAddress:
+def parse_email_address_input(email_address_input: str, allow_empty=False) -> ParsedEmailAddress:
     result = ParsedEmailAddress()
     if email_address_input.endswith(" SMTPUTF8"):  # Note space at start to conform with RFC 6531
         result.is_utf8 = True
@@ -48,6 +48,10 @@ def parse_email_address_input(email_address_input: str) -> ParsedEmailAddress:
         result.is_valid = validate_domain(result.domain) and validate_local_part(result.local_part)
     else:
         result.local_part = result.email_address
+
+    if result.email_address == "" and allow_empty:
+        # This allows us to receive bounced emails.
+        result.is_valid = True
 
     return result
 

@@ -12,8 +12,7 @@ from typing import Dict
 
 
 class DataToFileDataHandler(BaseDataCommand):
-    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = "",
-                 default_config: Dict = None):
+    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = "", default_config: Dict = {}):
         super().__init__(logger, config_loader, config_suffix, default_config)
         self.__mail_spool_dir = self._config.get("mail_spool_dir", "/var/tmp")
         self.__mail_file = None

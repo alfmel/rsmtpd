@@ -10,6 +10,8 @@ def by_name(fqdn: str, ip_address_hint: str = None) -> Union[str, None]:
         ips = [answer.address for answer in result]
     except NXDOMAIN:
         return None
+    except Exception:
+        return None
 
     if not ip_address_hint:
         return ips[0]
@@ -23,6 +25,8 @@ def by_ip(ip_address: str, domain_hint: str = None) -> Union[str, None]:
         result = resolver.resolve(str(reverse_lookup), "PTR")
         domains = [str(answer) for answer in result]
     except NXDOMAIN:
+        return None
+    except Exception:
         return None
 
     if not domain_hint:

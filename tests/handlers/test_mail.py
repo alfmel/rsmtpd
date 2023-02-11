@@ -57,6 +57,19 @@ class TestMailHandler(unittest.TestCase):
         self.assertIsInstance(shared_state.mail_from, ParsedEmailAddress)
         self.assertEqual(shared_state.mail_from.email_address, "test@example.com")
 
+    def test_handle_bounce(self):
+        mock_config_loader = MockConfigLoader(StubLoggerFactory())
+        shared_state = SharedState(("127.0.0.1", 12345))
+        shared_state.client_name = ClientName()
+        handler = MailHandler(self._mock_logger, mock_config_loader)
+
+        response = handler.handle("MAIL", "FROM:<> BODY=8BITMIME", shared_state)
+
+        self.assertEqual(response.get_code(), 250)
+        self.assertIsInstance(shared_state.mail_from, ParsedEmailAddress)
+        self.assertEqual(shared_state.mail_from.email_address, "")
+        self.assertEqual(shared_state.mail_from.is_valid, True)
+
 
 if __name__ == '__main__':
     unittest.main()

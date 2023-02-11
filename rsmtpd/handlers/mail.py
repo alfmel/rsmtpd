@@ -20,7 +20,7 @@ class MailHandler(BaseCommand):
         if not argument.upper().startswith("FROM:"):
             return SmtpResponse504("Only MAIL FROM: is implemented on this server")
 
-        shared_state.mail_from = parse_email_address_input(argument.split(":", 1)[1])
+        shared_state.mail_from = parse_email_address_input(argument.split(":", 1)[1], True)
 
         if not shared_state.mail_from.is_valid:
             return SmtpResponse501("Email address does not appear to be valid")

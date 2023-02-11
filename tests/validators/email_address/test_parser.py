@@ -73,6 +73,16 @@ class TestParseEmailAddressInput(unittest.TestCase):
         self.assertFalse(result.is_utf8)
         self.assertTrue(result.contained_rfc_brackets)
 
+    def test_empty_address_allow_empty(self):
+        result = parse_email_address_input("<>", True)
+        self.assertTrue(result.is_valid)
+        self.assertEqual(result.input, "<>")
+        self.assertEqual(result.email_address, "")
+        self.assertEqual(result.local_part, "")
+        self.assertEqual(result.domain, None)
+        self.assertFalse(result.is_utf8)
+        self.assertTrue(result.contained_rfc_brackets)
+
 
 class TestValidateDomain(unittest.TestCase):
     def test_validate_domain(self):
