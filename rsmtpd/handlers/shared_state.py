@@ -101,7 +101,7 @@ class SharedState(object):
     # An object with the current command information
     current_command: CurrentCommand = None
 
-    def __init__(self, remote_address, tls_available=False):
+    def __init__(self, remote_address: (str, int), tls_available: bool = False):
         self.transaction_id = uuid4().hex
         self.client = Client(remote_address, tls_available)
         self.client_name = None

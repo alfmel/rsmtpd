@@ -18,6 +18,8 @@ STARTTLS:
 MAIL:
   - module: rsmtpd.handlers.mail
     class: MailHandler
+  - module: rsmtpd.handlers.spf_validator
+    class: SpfValidator
 
 RCPT:
   - module: rsmtpd.handlers.recipient
