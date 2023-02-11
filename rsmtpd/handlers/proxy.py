@@ -1,7 +1,5 @@
 from logging import Logger
-from socket import socket
-
-from rsmtpd import ConfigLoader
+from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.exceptions import RemoteConnectionClosedException
 from rsmtpd.handlers.base_command import BaseCommand
@@ -13,6 +11,7 @@ from rsmtpd.response.proxy_response import ProxyResponse
 from rsmtpd.response.smtp_220_start_tls import SmtpResponse220StartTLS
 from rsmtpd.response.smtp_221 import SmtpResponse221
 from rsmtpd.response.smtp_354 import SmtpResponse354
+from socket import socket
 
 
 class Proxy(BaseCommand, BaseDataCommand):
@@ -32,6 +31,8 @@ class Proxy(BaseCommand, BaseDataCommand):
         try:
             if cmd == "__OPEN__":
                 response = self._connect_to_remote_server(shared_state)
+            elif cmd == "AUTH":
+                response = ProxyResponse(500, "AUTH command not supported")
             elif cmd == "STARTTLS":
                 response = SmtpResponse220StartTLS()
             elif cmd in ["HELO", "EHLO"] and self._helo_response:
@@ -150,7 +151,7 @@ class Proxy(BaseCommand, BaseDataCommand):
             if cmd == "HELO" or cmd == "EHLO":
                 # Cache HELO/EHLO response for TLs reset without STARTTLS
                 self._helo_response = response
-                if shared_state.tls_available and not shared_state.tls_enabled:
+                if shared_state.client.tls_available and not shared_state.client.tls_enabled:
                     multi_line_message_with_starttls = multi_line_message.copy()
                     multi_line_message_with_starttls.append("STARTTLS")
                     response = ProxyResponse(smtp_code, message, multi_line_message_with_starttls)
