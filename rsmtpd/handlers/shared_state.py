@@ -111,3 +111,4 @@ class SharedState(object):
         self.recipients = set()
         self.data_filename = None
         self.current_command = CurrentCommand()
+        self.server_version = ""

@@ -30,7 +30,8 @@ DATA:
 __DATA__:
   - module: rsmtpd.handlers.data_file
     class: DataToFileDataHandler
-  # TODO: Add entry for delivery
+  - module: rsmtpd.handlers.dovecot_delivery
+    class: DovecotDelivery
   # This entry must always exist and be the last DATA entry
   - module: rsmtpd.handlers.post_data_reset
     class: PostDataResetDataHandler

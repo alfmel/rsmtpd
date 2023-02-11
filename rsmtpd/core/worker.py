@@ -21,7 +21,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.4.93"
+    __VERSION = "0.4.94"
 
     __default_config = {
         "command_handler": "__default__",
@@ -65,6 +65,7 @@ class Worker(object):
 
         # Initialize the shared state
         self._shared_state = SharedState(remote_address, tls.enabled())
+        self._shared_state.server_version = self.__VERSION
         if "maximum_message_size_in_mb" in worker_config and worker_config["maximum_message_size_in_mb"] > 0:
             self._shared_state.max_message_size = worker_config["maximum_message_size_in_mb"] * 1048576  # MiB
 

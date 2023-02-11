@@ -12,7 +12,8 @@ from typing import Dict
 
 
 class DataToFileDataHandler(BaseDataCommand):
-    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = "", default_config: Dict = {}):
+    def __init__(self, logger: Logger, config_loader: ConfigLoader, config_suffix: str = "",
+                 default_config: Dict = None):
         super().__init__(logger, config_loader, config_suffix, default_config)
         self.__mail_spool_dir = self._config.get("mail_spool_dir", "/var/tmp")
         self.__mail_file = None
@@ -39,7 +40,7 @@ class DataToFileDataHandler(BaseDataCommand):
         if self.__mail_file:
             try:
                 self.__mail_file.close()
-            except:
+            except Exception:
                 pass
 
         if self.__error:
@@ -54,11 +55,15 @@ class DataToFileDataHandler(BaseDataCommand):
         return SmtpResponse250()
 
     def _write_envelope(self, shared_state):
-        headers = "Return-Path: <{}>\r\n".format(shared_state.mail_from.email_address) + \
-                  "Received: from [{}:{}] {} TLS=\r\n".format(shared_state.client.ip,
-                                                              shared_state.client.port,
-                                                              shared_state.client_name.reverse_dns_name,
-                                                              shared_state.client.tls_enabled) + \
-                  "          with helo {}\r\n".format(shared_state.client.advertised_name) + \
-                  "          on {} by RSMTPD\r\n".format(datetime.now().strftime("%Y-%m-%dT%H%:M%:%S%z"))
+        ip_and_port = f"{shared_state.client.ip}:{shared_state.client.port}"
+        client_host_name = shared_state.client_name.reverse_dns_name
+        tls_enabled = "enabled" if shared_state.client.tls_enabled else "disabled"
+        helo = "EHLO" if shared_state.esmtp_capable else "HELO"
+        datetime_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
+
+        headers = f"Return-Path: <{shared_state.mail_from.email_address}>\r\n" \
+                  f"Received: from [{ip_and_port}] {client_host_name} TLS {tls_enabled}\r\n" \
+                  f"          with {helo} {shared_state.client.advertised_name}\r\n" \
+                  f"          on {datetime_str} by RSMTPD {shared_state.server_version}\r\n"
+
         self.__mail_file.write(bytes(headers, "UTF8"))
