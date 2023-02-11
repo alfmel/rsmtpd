@@ -30,6 +30,7 @@ class DovecotDelivery(BaseDataCommand):
         try:
             for recipient in shared_state.recipients:
                 with open(shared_state.data_filename, 'rb') as data_stream:
+                    self._logger.info(f"Attempting to deliver {shared_state.transaction_id} to {recipient.deliver_to}")
                     result = subprocess.run([self._config.get("dovecot_lda_path", "/usr/lib/dovecot/dovecot-lda"),
                                             "-a", recipient.deliver_to], stdin=data_stream)
                     if result.returncode:
