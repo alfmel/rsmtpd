@@ -4,5 +4,5 @@ from rsmtpd.response.base_response import BaseResponse
 
 class SmtpResponse220(BaseResponse):
     _smtp_code = 220
-    _message = "<domain> Service ready"
+    _message = "<server_name> service ready"
     _action = OK

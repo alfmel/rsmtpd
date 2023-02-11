@@ -11,8 +11,8 @@ class StartTLS(BaseCommand):
     A handler for starting TLS socket encryption
     """
     def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
-        if shared_state.tls_available:
-            if shared_state.tls_enabled:
+        if shared_state.client.tls_available:
+            if shared_state.client.tls_enabled:
                 return SmtpResponse503("TLS already started")
             return SmtpResponse220StartTLS()
         else:

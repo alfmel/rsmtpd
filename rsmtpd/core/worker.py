@@ -1,15 +1,15 @@
 import copy
 import socket
-from typing import Dict, List, ClassVar
-
+from typing import Dict, List
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
+from rsmtpd.core.class_factory import ClassFactory
 from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.core.tls import TLS
 from rsmtpd.exceptions import RemoteConnectionClosedException
 from rsmtpd.handlers.base_command import BaseCommand
 from rsmtpd.handlers.base_data_command import BaseDataCommand
-from rsmtpd.handlers.shared_state import SharedState
+from rsmtpd.handlers.shared_state import CurrentCommand, SharedState
 from rsmtpd.response.action import *
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_451 import SmtpResponse451
@@ -20,8 +20,12 @@ class Worker(object):
     """
     The main worker class. All incoming connections will be handled in a worker
     """
+
+    __VERSION = "0.5.0"
+
     __default_config = {
-        "command_handler": "__default__"
+        "command_handler": "__default__",
+        "maximum_message_size_in_mb": 8
     }
 
     __default_handler = {
@@ -39,33 +43,34 @@ class Worker(object):
         }]
     }
 
-    # Whether the last data chunk ended with CRLF
-    __last_data_chunk_ends_with_crlf = False
-    __first_data_chunk = True
-
-    _handler_config = None
-    _shared_state = None
-
     def __init__(self, server_name: str, config_loader: ConfigLoader, logger_factory: LoggerFactory):
         self.__server_name = server_name
         self.__config_loader = config_loader
         self.__logger_factory = logger_factory
         self.__logger = logger_factory.get_module_logger(self)
+        self.__class_factory = ClassFactory(logger_factory, config_loader)
         self.__handler_instances = {}
         self._handler_config = None
         self._shared_state = None
+        self.__first_data_chunk = True
+        self.__last_data_chunk_ends_with_crlf = False
 
     def handle_client(self, sock: socket, remote_address, tls: TLS):
         smtp_socket = SMTPSocket(sock)
 
         # Load the worker and handler configurations
-        command_handler_name = self._get_worker_config()
+        worker_config = self._get_worker_config()
+        command_handler_name = worker_config["command_handler"]
         self._handler_config = self._get_handler_config(command_handler_name)
 
         # Initialize the shared state
         self._shared_state = SharedState(remote_address, tls.enabled())
+        self._shared_state.server_version = self.__VERSION
+        if "maximum_message_size_in_mb" in worker_config and worker_config["maximum_message_size_in_mb"] > 0:
+            self._shared_state.max_message_size = worker_config["maximum_message_size_in_mb"] * 1048576  # MiB
+
         self.__logger.info("%s Starting SMTP session with %s:%s", self._shared_state.transaction_id,
-                           self._shared_state.remote_ip, self._shared_state.remote_port)
+                           self._shared_state.client.ip, self._shared_state.client.port)
 
         # Initialize the main command loop with the __OPEN__ command
         command = "__OPEN__"
@@ -101,8 +106,8 @@ class Worker(object):
 
             if response.get_action() == FORCE_CLOSE:
                 self.__logger.info("%s Forcefully ending SMTP session with %s:%s as requested by command handler",
-                                   self._shared_state.transaction_id, self._shared_state.remote_ip,
-                                   self._shared_state.remote_port)
+                                   self._shared_state.transaction_id, self._shared_state.client.ip,
+                                   self._shared_state.client.port)
                 return
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
@@ -127,8 +132,8 @@ class Worker(object):
             # TODO: Handle all actions
             if response.get_action() == CLOSE:
                 self.__logger.info("%s Ending SMTP session with %s:%s as requested by command handler",
-                                   self._shared_state.transaction_id, self._shared_state.remote_ip,
-                                   self._shared_state.remote_port)
+                                   self._shared_state.transaction_id, self._shared_state.client.ip,
+                                   self._shared_state.client.port)
                 return
             elif response.get_action() == FORCE_CLOSE:
                 return
@@ -142,8 +147,10 @@ class Worker(object):
         self._shared_state.last_command_has_standard_line_ending = line_bytes[-2:] == b"\r\n"
 
         try:
-            # TODO: Handle non-ASCII encoding
-            line = line_bytes.decode("US-ASCII").strip()
+            if line_bytes.strip().endswith(" SMTPUTF8".encode()):
+                line = line_bytes.decode("UTF8").strip()
+            else:
+                line = line_bytes.decode("US-ASCII").strip()
 
             # Split the command on the first space
             split_line = line.split(" ", maxsplit=1)
@@ -176,18 +183,27 @@ class Worker(object):
         if self._shared_state.esmtp_capable:
             self.__logger.info("%s Sending extended response to client with SMTP code %s",
                                self._shared_state.transaction_id, response.get_code())
-            smtp_socket.write(response.get_extended_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(self.__replace_response_templates(response.get_extended_smtp_response()).encode())
         else:
             self.__logger.info("%s Sending response to client with SMTP code %s",
                                self._shared_state.transaction_id,
                                response.get_code())
-            smtp_socket.write(response.get_smtp_response().replace("<domain>", self.__server_name).encode())
+            smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
+
+    def __replace_response_templates(self, response: str) -> str:
+        response = response.replace("<server_name>", self.__server_name)
+        response = response.replace("<version>", self.__VERSION)
+        response = response.replace("<client.ip>", self._shared_state.client.ip)
+        response = response.replace("<client.port>", str(self._shared_state.client.port))
+        response = response.replace("<client.advertised_name>", self._shared_state.client.advertised_name)
+
+        return response
 
     def _handle_command(self, command: str, argument: str, buffer_is_empty: bool) -> BaseResponse:
         command_handlers = self._get_command_config(command)
         response = None
 
-        self._shared_state.current_command = self._shared_state.CurrentCommand()
+        self._shared_state.current_command = CurrentCommand()
         self._shared_state.current_command.buffer_is_empty = buffer_is_empty
 
         for command_handler in command_handlers:
@@ -243,11 +259,14 @@ class Worker(object):
                 response = copy.deepcopy(tmp_response)
                 self._shared_state.current_command.response = copy.deepcopy(response)
 
+        if response is None:
+            self.__logger.warning("Data handlers did not return a response; rejecting message with temporary error")
+            response = SmtpResponse451()
+
         return response
 
-    def _get_worker_config(self) -> str:
-        config = self.__config_loader.load(self, "", self.__default_config)
-        return config["command_handler"]
+    def _get_worker_config(self) -> Dict:
+        return self.__config_loader.load(self, "", self.__default_config)
 
     def _get_handler_config(self, handler_name) -> Dict:
         handler_config = self.__default_handler
@@ -276,32 +295,7 @@ class Worker(object):
             command_config = self._handler_config["__DEFAULT__"]
         return command_config
 
-    def _get_handler(self, command_config: Dict, class_type: ClassVar):
+    def _get_handler(self, command_config: Dict, class_type):
         if command_config:
-            instance_name = "{}::{}".format(command_config["module"], command_config["class"])
-            if instance_name in self.__handler_instances:
-                return self.__handler_instances[instance_name]
-
-            try:
-                module = __import__(command_config["module"])
-                for sub in command_config["module"].split(".")[1:]:
-                    module = getattr(module, sub)
-                class_ref = getattr(module, command_config["class"])
-                if issubclass(class_ref, class_type):
-                    self.__logger.debug("Instantiating class %s in module %s", command_config["class"],
-                                        command_config["module"])
-                    # TODO: Implement suffixes
-                    instance = class_ref(self.__logger_factory.get_child_logger(command_config["class"]),
-                                         self.__config_loader, "")
-                    self.__logger.debug("Class %s in module %s successfully instantiated", command_config["class"],
-                                        command_config["module"])
-                    self.__handler_instances[instance_name] = instance
-                    return instance
-                else:
-                    self.__logger.error("Class %s in module %s does not inherit from BaseCommand; handler ignored",
-                                        command_config["class"], command_config["module"])
-                    return None
-            except Exception as e:
-                self.__logger.error("Unable to load class: %s.%s does not exist (%s)", command_config["module"],
-                                    command_config["class"], e)
-                return None
+            return self.__class_factory.get_instance(command_config["module"], command_config["class"], class_type)
+        return None

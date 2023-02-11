@@ -4,7 +4,7 @@ from rsmtpd.response.base_response import BaseResponse
 
 class SmtpResponse521(BaseResponse):
     _smtp_code = 521
-    _message = "Server <domain> does not accept mail"
+    _message = "Server <server_name> does not accept mail"
     _action = CLOSE
 
     def __init__(self, alt_message: str = None, close_on_connect: bool = True):

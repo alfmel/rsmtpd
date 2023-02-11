@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
-"""
-Main execution entry point: starts RSMTPD
-"""
-
 import sys
 from argparse import ArgumentParser
 from rsmtpd.core.logger_factory import LoggerFactory
 from rsmtpd.core.server import Server
 from rsmtpd.core.config_loader import ConfigLoader
+
+"""
+Main execution entry point: starts RSMTPD
+"""
 
 
 def main(argv):

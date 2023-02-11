@@ -1,0 +1,5 @@
+# Configuration for the Greeting command handler (greets a new connection with SMTP Response 220)
+#
+# See docs/response_variables.md for list of available response variables.
+
+message: <server_name> RSMTPD v<version> service ready

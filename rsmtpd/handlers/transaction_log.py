@@ -5,10 +5,10 @@ A set of command handlers that log commands and responses. There are three diffe
    occurs at the same time when the command handler is invoked. That means there is only one timestamp associated with
    the entry. This command handler should come at the end of the command handler chain.
 
-2. CommandLog - Logs the commands only. If placed at the beginning of the command chain, it will accurate log timestamps
-   when a command is received. Responses are not logged.
+2. CommandLog - Logs the commands only. If placed at the beginning of the command chain, it will accurately log
+   timestamps when a command is received. Responses are not logged.
 
-3. ResponseLog - Logs the responses only. If placed at the end of the command chain, it will accurate log responses as
+3. ResponseLog - Logs the responses only. If placed at the end of the command chain, it will accurately log responses as
    they are about to be handled by the worker. It can also be inserted between commands in the command chain to log
    their responses.
 """
@@ -18,7 +18,7 @@ import time
 from datetime import datetime
 from logging import Logger
 
-from rsmtpd import ConfigLoader
+from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.handlers.base_command import BaseCommand, SharedState
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 
@@ -99,7 +99,7 @@ class TransactionLog(BaseCommand, BaseDataCommand):
             try:
                 if not os.path.isdir(self._config["log_path"]):
                     os.mkdir(self._config["log_path"])
-                filename = "{}-{}-{}.log".format(time.strftime("%Y%m%dT%H%M%S"), shared_state.remote_ip,
+                filename = "{}-{}-{}.log".format(time.strftime("%Y%m%dT%H%M%S"), shared_state.client.ip,
                                                  shared_state.transaction_id)
                 full_path = os.path.join(self._config["log_path"], filename)
 

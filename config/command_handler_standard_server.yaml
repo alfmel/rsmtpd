@@ -1,0 +1,49 @@
+# This file configures RSMTPD to act as a normal mail server. Make sure to set your message delivery handler in ???
+__OPEN__:
+  - module: rsmtpd.handlers.greeting
+    class: GreetingHandler
+
+HELO:
+  - module: rsmtpd.handlers.hello
+    class: HelloHandler
+
+EHLO:
+  - module: rsmtpd.handlers.hello
+    class: HelloHandler
+
+STARTTLS:
+  - module: rsmtpd.handlers.starttls
+    class: StartTLS
+
+MAIL:
+  - module: rsmtpd.handlers.mail
+    class: MailHandler
+
+RCPT:
+  - module: rsmtpd.handlers.recipient
+    class: RecipientHandler
+
+VRFY:
+  - module: rsmtpd.handlers.verify_attempt_delivery
+    class: VerifyAttemptDelivery
+
+DATA:
+  - module: rsmtpd.handlers.data
+    class: DataHandler
+
+__DATA__:
+  - module: rsmtpd.handlers.data_file
+    class: DataToFileDataHandler
+  - module: rsmtpd.handlers.dovecot_delivery
+    class: DovecotDelivery
+  # This entry must always exist and be the last DATA entry
+  - module: rsmtpd.handlers.post_data_reset
+    class: PostDataResetDataHandler
+
+QUIT:
+  - module: rsmtpd.handlers.quit
+    class: Quit
+
+__DEFAULT__:
+  - module: rsmtpd.handlers.unknown_command
+    class: UnknownCommand

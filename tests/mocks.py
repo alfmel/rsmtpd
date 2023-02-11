@@ -2,7 +2,7 @@ from logging import Logger
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
 from socket import socket
-from typing import Dict
+from typing import Dict, Union
 from unittest.mock import Mock
 
 
@@ -20,8 +20,6 @@ class MockLogger(Logger):
 
 
 class MockConfigLoader(ConfigLoader):
-    _config: Dict
-
     def __init__(self, logger_factory: LoggerFactory, config: dict = None):
         super().__init__(logger_factory)
         self._config = config
@@ -37,6 +35,9 @@ class MockConfigLoader(ConfigLoader):
             return default
         else:
             return self._config
+
+    def set_mock_config(self, config: Union[dict, None]):
+        self._config = config
 
 
 def get_mock_socket() -> Mock(socket):
