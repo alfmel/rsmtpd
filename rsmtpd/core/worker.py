@@ -112,14 +112,13 @@ class Worker(object):
                 return
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
-                    self._send_response(smtp_socket, response)
+                    self._send_response(smtp_socket, response, command)
 
                     try:
                         ssl_socket, response, server_name = tls.start(sock)
                         if not response:
                             self._shared_state.client.tls_enabled = True
                             self.__server_name = server_name
-                            sock = ssl_socket
                             smtp_socket = SMTPSocket(ssl_socket)
                             self.__logger.info("TLS successfully initialized")
 
@@ -131,7 +130,7 @@ class Worker(object):
                 else:
                     response = SmtpResponse500()
 
-            self._send_response(smtp_socket, response)
+            self._send_response(smtp_socket, response, command)
 
             # Clear the command for the next loop iteration
             command = None
@@ -186,15 +185,14 @@ class Worker(object):
 
         return line, data_end
 
-    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse):
+    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse, command: str):
         if self._shared_state.esmtp_capable:
-            self.__logger.info("%s Sending extended response to client with SMTP code %s",
-                               self._shared_state.transaction_id, response.get_code())
+            self.__logger.info("%s Sending extended response to client command %s with SMTP code %s",
+                               self._shared_state.transaction_id, command, response.get_code())
             smtp_socket.write(self.__replace_response_templates(response.get_extended_smtp_response()).encode())
         else:
-            self.__logger.info("%s Sending response to client with SMTP code %s",
-                               self._shared_state.transaction_id,
-                               response.get_code())
+            self.__logger.info("%s Sending response to client command %s with SMTP code %s",
+                               self._shared_state.transaction_id, command, response.get_code())
             smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
 
     def __replace_response_templates(self, response: str) -> str:
