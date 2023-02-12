@@ -36,6 +36,8 @@ DATA:
 __DATA__:
   - module: rsmtpd.handlers.data_file
     class: DataToFileDataHandler
+  - module: rsmtpd.handlers.undeliverable_notification_validator
+    class: UndeliverableNotificationValidator
   - module: rsmtpd.handlers.dovecot_delivery
     class: DovecotDelivery
   # This entry must always exist and be the last DATA entry
