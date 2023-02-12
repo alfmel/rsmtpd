@@ -117,7 +117,7 @@ class Worker(object):
                     try:
                         ssl_socket, response, server_name = tls.start(sock)
                         if not response:
-                            self._shared_state.tls_enabled = True
+                            self._shared_state.client.tls_enabled = True
                             self.__server_name = server_name
                             sock = ssl_socket
                             smtp_socket = SMTPSocket(ssl_socket)
