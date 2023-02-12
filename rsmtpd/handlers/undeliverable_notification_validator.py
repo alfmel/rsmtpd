@@ -36,10 +36,10 @@ class UndeliverableNotificationValidator(BaseDataCommand):
 
                 if expressions_found < 3:
                     self._logger.error(f"Rejecting message to {shared_state.transaction_id}: "
-                                       f"message had empty MAIL FROM but only {expressions} undeliverable expressions "
-                                       f"in body")
-                    return SmtpResponse550("Message does not appear to contain a Undeliverable Mail Notification",
-                                           ["Message does not appear to contain a Undeliverable Mail Notification",
+                                       f"message had empty MAIL FROM but only {expressions_found} undeliverable "
+                                       f"expression(s) in body")
+                    return SmtpResponse550("Message does not appear to contain an Undeliverable Mail Notification",
+                                           ["Message does not appear to contain an Undeliverable Mail Notification",
                                             "We hae considered this message to be Spam and will not be delivered"
                                             "Remove this recipient and others in this domain from your lists"])
 
