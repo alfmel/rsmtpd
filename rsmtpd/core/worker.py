@@ -13,6 +13,7 @@ from rsmtpd.handlers.shared_state import CurrentCommand, SharedState
 from rsmtpd.response.action import *
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_451 import SmtpResponse451
+from rsmtpd.response.smtp_454 import SmtpResponse454
 from rsmtpd.response.smtp_500 import SmtpResponse500
 
 
@@ -21,7 +22,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.5.2"
+    __VERSION = "0.5.3"
 
     __default_config = {
         "command_handler": "__default__",
@@ -112,15 +113,21 @@ class Worker(object):
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
                     self._send_response(smtp_socket, response)
-                    ssl_socket, response, server_name = tls.start(sock)
-                    if not response:
-                        self._shared_state.tls_enabled = True
-                        self.__server_name = server_name
-                        sock = ssl_socket
-                        smtp_socket = SMTPSocket(ssl_socket)
-                        self.__logger.info("TLS successfully initialized")
-                        command = None
-                        continue
+
+                    try:
+                        ssl_socket, response, server_name = tls.start(sock)
+                        if not response:
+                            self._shared_state.tls_enabled = True
+                            self.__server_name = server_name
+                            sock = ssl_socket
+                            smtp_socket = SMTPSocket(ssl_socket)
+                            self.__logger.info("TLS successfully initialized")
+
+                            command = "__OPEN__"
+                            argument = ""
+                            continue
+                    except Exception:
+                        response = SmtpResponse454()
                 else:
                     response = SmtpResponse500()
 

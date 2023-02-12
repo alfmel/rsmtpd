@@ -3,9 +3,8 @@ from copy import deepcopy
 from rsmtpd.handlers.base_data_command import BaseDataCommand
 from rsmtpd.handlers.shared_state import SharedState
 from rsmtpd.response.base_response import BaseResponse
-from typing import List
-
 from rsmtpd.response.smtp_550 import SmtpResponse550
+from typing import List
 
 
 class UndeliverableNotificationValidator(BaseDataCommand):
@@ -24,7 +23,8 @@ class UndeliverableNotificationValidator(BaseDataCommand):
         pass
 
     def handle_data_end(self, shared_state: SharedState) -> BaseResponse:
-        if shared_state.mail_from.email_address == "" and shared_state.data_filename:
+        if shared_state.mail_from.email_address == "" and shared_state.current_command.response and \
+                shared_state.current_command.response.get_code() == 250 and shared_state.data_filename:
             try:
                 expressions_found = 0
                 expressions_left = deepcopy(self.__UNDELIVERABLE_EXPRESSIONS)
