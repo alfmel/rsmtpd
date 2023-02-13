@@ -1,4 +1,6 @@
+import os
 import ssl
+import tempfile
 from socket import socket
 from ssl import SSLContext
 from typing import Dict, List
@@ -19,19 +21,17 @@ class TLS(object):
         self._server_name = ""
 
     def load_certificates_and_keys(self):
-        loaded_certificates = []
+        load_certificate_count = 0
         for certificate in self._certificates:
             try:
-                context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                context.load_cert_chain(certificate["pem_file"], certificate["key_file"])
-                loaded_certificates.append(certificate)
-                self._contexts[certificate["server_name"]] = context
+                certificate["cert"] = self._load_file(certificate["pem_file"])
+                certificate["key"] = self._load_file(certificate["key_file"])
+                load_certificate_count += 1
             except Exception as e:
                 self._logger.warning("Certificate for {} disabled".format(certificate["server_name"]))
 
-        if len(loaded_certificates):
-            self._certificates = loaded_certificates
-            self._logger.info("TLS initialized with {} certificate(s)".format(len(loaded_certificates)))
+        if load_certificate_count:
+            self._logger.info("TLS initialized with {} certificate(s)".format(load_certificate_count))
         else:
             self._enabled = False
             self._logger.warning("No valid certificates could be loaded; TLS disabled")
@@ -39,7 +39,7 @@ class TLS(object):
     def enabled(self) -> bool:
         return self._enabled
 
-    def start(self, connection: socket) -> (socket, BaseResponse):
+    def start(self, connection: socket) -> (socket, BaseResponse, str):
         try:
             context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
             context.sni_callback = lambda conn, server_name, ssl_context: \
@@ -53,7 +53,14 @@ class TLS(object):
 
     def _select_and_assign_certificate_context(self, connection: ssl.SSLSocket, server_name: str, ssl_context: SSLContext):
         certificate = self.select_certificate(server_name)
-        connection.context = self._contexts[certificate["server_name"]]
+
+        (cert_file, key_file) = self._write_cert_files(certificate)
+        new_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        new_context.load_cert_chain(cert_file, key_file)
+        connection.context = new_context
+        os.unlink(cert_file)
+        os.unlink(key_file)
+
         self._server_name = certificate["server_name"]
         self._logger.info("Successfully loaded TLS certificate and key")
 
@@ -80,3 +87,22 @@ class TLS(object):
                               .format(certificate["server_name"], server_name))
 
         return certificate
+
+    def _load_file(self, filename: str) -> bytes:
+        try:
+            with open(filename, "rb") as f:
+                return f.read()
+        except Exception as e:
+            self._logger.warning("Unable to read {}: {}".format(filename, e))
+            raise e
+
+    def _write_cert_files(self, certificate: Dict) -> (str, str):
+        with tempfile.NamedTemporaryFile("wb", delete=False) as cert:
+            cert.write(certificate["cert"])
+            cert_name = cert.name
+
+        with tempfile.NamedTemporaryFile("wb", delete=False) as key:
+            key.write(certificate["key"])
+            key_name = key.name
+
+        return cert_name, key_name
