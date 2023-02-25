@@ -122,8 +122,7 @@ class Worker(object):
                             smtp_socket = SMTPSocket(ssl_socket)
                             self.__logger.info("TLS successfully initialized")
 
-                            # command = "__OPEN__"
-                            command = ""
+                            command = None
                             argument = ""
                             continue
                     except Exception:
