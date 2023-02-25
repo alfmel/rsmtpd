@@ -22,7 +22,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.5.3"
+    __VERSION = "0.5.4"
 
     __default_config = {
         "command_handler": "__default__",
@@ -122,7 +122,8 @@ class Worker(object):
                             smtp_socket = SMTPSocket(ssl_socket)
                             self.__logger.info("TLS successfully initialized")
 
-                            command = "__OPEN__"
+                            # command = "__OPEN__"
+                            command = ""
                             argument = ""
                             continue
                     except Exception:
