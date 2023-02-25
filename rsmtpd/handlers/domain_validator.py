@@ -25,26 +25,31 @@ class DomainValidator(BaseCommand):
 
         if not shared_state.client_name.is_valid_fqdn:
             self._logger.warning("Rejecting sender as client did not present a valid name")
+            shared_state.mail_from.is_valid = False
             return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         for domain_to_block in domains_to_block:
             if domain == domain_to_block or domain.endswith(f".{domain_to_block}"):
                 self._logger.warning("Rejecting sender as domain is in block domain list")
+                shared_state.mail_from.is_valid = False
                 return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         domain_age = dns.get_domain_age_in_days(domain)
         if domain_age < minimum_domain_age_in_days:
             self._logger.warning(f"Rejecting sender as domain has age of {domain_age} days "
                                  f"({minimum_domain_age_in_days} required)")
+            shared_state.mail_from.is_valid = False
             return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         domain_mx_records = dns.mx_records(domain)
         if len(domain_mx_records) == 0:
             self._logger.warning("Rejecting sender as domain does not have MX records")
+            shared_state.mail_from.is_valid = False
             return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         if verify_smtp_server_available and not self.__is_smtp_server_available(domain_mx_records):
             self._logger.warning("Rejecting sender as SMTP server does not accept email")
+            shared_state.mail_from.is_valid = False
             return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         return shared_state.current_command.response

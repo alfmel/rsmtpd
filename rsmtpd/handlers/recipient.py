@@ -37,7 +37,8 @@ class RecipientHandler(BaseCommand):
             return SmtpResponse501("Email address does not appear to be valid")
 
         validated_recipient = self._recipient_validator.validate(parsed_email_address)
-        self._logger.info(f"Recipient <{parsed_email_address.email_address}> validation result: {validated_recipient}")
+        self._logger.info(f"Recipient <{parsed_email_address.email_address}> validation result: "
+                          f"{validated_recipient.validation_result}")
 
         if validated_recipient.validation_result == VALID or validated_recipient.validation_result == SOFT_INVALID:
             shared_state.recipients.add(validated_recipient)
