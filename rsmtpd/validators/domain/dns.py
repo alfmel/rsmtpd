@@ -1,7 +1,8 @@
+from datetime import datetime
 from dns import resolver, reversename
-from typing import List, Union
-
 from dns.resolver import NXDOMAIN
+from typing import List, Union
+from whois import whois
 
 
 def by_name(fqdn: str, ip_address_hint: str = None) -> Union[str, None]:
@@ -41,6 +42,16 @@ def mx_records(domain: str) -> List[str]:
         return [str(result.exchange)[:-1] for result in results]
     except NXDOMAIN:
         return []
+
+
+def get_domain_age_in_days(domain) -> int:
+    try:
+        domain_info = whois(domain)
+        creation_date = domain_info.creation_date[0] if isinstance(domain_info.creation_date, list)\
+            else domain_info.creation_date
+        return (datetime.now() - creation_date).days
+    except Exception as e:
+        return 0
 
 
 def _find_best_ip(ip_addresses: List[str], ip_address: str) -> Union[str, None]:

@@ -25,8 +25,7 @@ class HelloHandler(BaseCommand):
         if "advertise_pipelining_extension" in self._config and self._config["advertise_pipelining_extension"]:
             extensions.add("PIPELINING")
 
-        client_name = ClientName()
-        client_name.name = argument.strip()
+        client_name = ClientName(argument.strip())
         if client_name.name and client_name.name.__contains__("."):
             client_name.forward_dns_ip = dns.by_name(client_name.name, shared_state.client.ip)
             client_name.is_valid_fqdn = bool(client_name.forward_dns_ip)

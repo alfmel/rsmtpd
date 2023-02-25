@@ -1,0 +1,9 @@
+# Whether to verify if the SMTP server for the domain is available (broken, set to no)
+verify_smtp_server_available: no
+
+# How old a domain has to be before we accept email from it (spammers often send spam from new domains)
+# Set to 0 to disable
+minimum_domain_age_in_days: 0
+
+# A list of domains (and subdomains) to block
+domains_to_block: []

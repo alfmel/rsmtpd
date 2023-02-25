@@ -46,17 +46,19 @@ class ClientName(object):
     """
     An object for storing client greeting information
     """
-    # The client name given by the client in HELO/EHLO command
-    name: str = None
 
-    # Whether the client name is a resolvable FQDN
-    is_valid_fqdn: bool = None
+    def __init__(self, name: Union[str, None] = None):
+        # The client name given by the client in HELO/EHLO command
+        self.name: Union[str, None] = name
 
-    # The IP address associated with the given client name (None if not FQDN)
-    forward_dns_ip: str = None
+        # Whether the client name is a resolvable FQDN
+        self.is_valid_fqdn: bool = False
 
-    # The reverse IP name (None if no reverse IP found)
-    reverse_dns_name: str = None
+        # The IP address associated with the given client name (None if not FQDN)
+        self.forward_dns_ip: Union[str, None] = None
+
+        # The reverse IP name (None if no reverse IP found)
+        self.reverse_dns_name: Union[str, None] = None
 
 
 class SharedState(object):
