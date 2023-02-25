@@ -45,15 +45,17 @@ class ExternalContentFilter(BaseDataCommand):
 
             output = result.stdout.decode("utf-8").strip()
             value = float(output)
+            self._logger.info(f"Message {shared_state.transaction_id} received external content filter score of "
+                              f"{value} (flag threshold {flag_threshold} / reject threshold {reject_threshold})")
 
             if value >= reject_threshold:
                 self._logger.warning(f"Message {shared_state.transaction_id} received score of {value} from external "
-                                     f"content filter and it is being rejected (threshold: {reject_threshold}")
+                                     f"content filter and it is being rejected (threshold: {reject_threshold})")
                 return SmtpResponse550("The content of message suggests this email is Spam")
 
             if value >= flag_threshold:
                 self._logger.warning(f"Message {shared_state.transaction_id} received score of {value} from external "
-                                     f"content filter and it is being flagged (threshold: {flag_threshold}")
+                                     f"content filter and it is being flagged (threshold: {flag_threshold})")
                 self._flag_message(shared_state.data_filename, flags)
         except ValueError:
             self._logger.error("External content filter command did not returned a numeric value; ignoring result")
