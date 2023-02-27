@@ -47,6 +47,10 @@ class TestSimpleAddressValidator(unittest.TestCase):
         self.__assertValidation(validator, "bob@example.net", VALID, "bob@example.com")
         self.__assertValidation(validator, "eve@example.net", DISABLED, "eve@example.net")
 
+    def test_uppercase(self):
+        validator = self.__getValidator(load(full_yaml_config, Loader=SafeLoader))
+        self.__assertValidation(validator, "ALICE@EXAMPLE.COM", VALID, "alice@example.com")
+
     def test_tagging(self):
         validator = self.__getValidator(load(full_yaml_config, Loader=SafeLoader))
 

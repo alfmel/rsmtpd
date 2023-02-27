@@ -43,7 +43,7 @@ def parse_email_address_input(email_address_input: str, allow_empty=False) -> Pa
     at_sign_location = result.email_address.rfind("@")
     if at_sign_location != -1:
         result.local_part = result.email_address[0:at_sign_location]
-        result.domain = result.email_address[at_sign_location + 1:]
+        result.domain = result.email_address[at_sign_location + 1:].lower()
 
         result.is_valid = validate_domain(result.domain) and validate_local_part(result.local_part)
     else:
