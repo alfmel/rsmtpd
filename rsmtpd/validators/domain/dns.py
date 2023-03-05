@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from dns import resolver, reversename
 from dns.resolver import NXDOMAIN
 from typing import List, Union
@@ -44,14 +44,24 @@ def mx_records(domain: str) -> List[str]:
         return []
 
 
-def get_domain_age_in_days(domain) -> int:
+def get_domain_age_in_days(domain: str) -> int:
     try:
         domain_info = whois(domain)
-        creation_date = domain_info.creation_date[0] if isinstance(domain_info.creation_date, list)\
-            else domain_info.creation_date
+        if domain.endswith(".edu"):
+            creation_date = _parse_edu_whois_creation_date(domain_info.text)
+        else:
+            creation_date = domain_info.creation_date[0] if isinstance(domain_info.creation_date, list) \
+                else domain_info.creation_date
         return (datetime.now() - creation_date).days
     except Exception as e:
-        return 0
+        return -1
+
+
+def _parse_edu_whois_creation_date(whois_info: str) -> datetime:
+    record_activated = list(filter(lambda line: line.lower().startswith("domain record activated:"),
+                                   whois_info.splitlines()))
+    if len(record_activated):
+        return datetime.strptime(record_activated[-1].strip()[-10:], "%d-%b-%Y")
 
 
 def _find_best_ip(ip_addresses: List[str], ip_address: str) -> Union[str, None]:
@@ -81,7 +91,7 @@ def _find_best_fqdn(domains: List[str], domain: str) -> Union[str, None]:
 
 def __ip_to_numerical_value(ip_address: str) -> int:
     values = ip_address.split(".")
-    return int(values[0]) * 256**3 + int(values[1]) * 256**2 + int(values[2]) * 256 + int(values[3])
+    return int(values[0]) * 256 ** 3 + int(values[1]) * 256 ** 2 + int(values[2]) * 256 + int(values[3])
 
 
 def __domain_level_matches(domain1: str, domain2: str) -> int:

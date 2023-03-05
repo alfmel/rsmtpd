@@ -35,11 +35,14 @@ class DomainValidator(BaseCommand):
                 return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         domain_age = dns.get_domain_age_in_days(domain)
-        if domain_age < minimum_domain_age_in_days:
-            self._logger.warning(f"Rejecting sender as domain has age of {domain_age} days "
-                                 f"({minimum_domain_age_in_days} required)")
-            shared_state.mail_from.is_valid = False
-            return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
+        if domain_age == -1:
+            self._logger.warning(f"Could not determine age of domain {domain}")
+        else:
+            if domain_age < minimum_domain_age_in_days:
+                self._logger.warning(f"Rejecting sender as domain has age of {domain_age} days "
+                                     f"({minimum_domain_age_in_days} required)")
+                shared_state.mail_from.is_valid = False
+                return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         domain_mx_records = dns.mx_records(domain)
         if len(domain_mx_records) == 0:

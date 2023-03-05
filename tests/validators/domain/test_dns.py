@@ -96,7 +96,11 @@ class TestDns(unittest.TestCase):
 
     def test_get_domain_age_in_days_non_existent_domain(self):
         age = dns.get_domain_age_in_days("this-domain-should-not-exist.com")
-        self.assertEqual(age, 0)
+        self.assertEqual(age, -1)
+
+    def test_get_domain_age_in_days_edu(self):
+        age = dns.get_domain_age_in_days("ucla.edu")
+        self.assertGreater(age, 3650)
 
 
 if __name__ == '__main__':
