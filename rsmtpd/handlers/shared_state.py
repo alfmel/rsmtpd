@@ -1,3 +1,4 @@
+from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.validators.email_address.parser import ParsedEmailAddress
 from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from typing import Set, Union
@@ -34,12 +35,13 @@ class CurrentCommand(object):
     """
     An object with the current command and connection buffer state
     """
-    # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before
-    # sending data (violates RFC 5321 Section 4.3.1 if PIPELINE is disabled)
-    buffer_is_empty = True
+    def __init__(self):
+        # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before
+        # sending data (violates RFC 5321 Section 4.3.1 if PIPELINE is disabled)
+        self.buffer_is_empty: bool = True
 
-    # The last response received by the command handler for this command; helps command handlers merge responses
-    response = None
+        # The last response received by the command handler for this command; helps command handlers merge responses
+        self.response: Union[BaseResponse, None] = None
 
 
 class ClientName(object):

@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(
     name='rsmtpd',
-    version='0.5.6',
+    version='0.5.7',
     packages=['rsmtpd', 'rsmtpd.core', 'rsmtpd.handlers', 'rsmtpd.response'],
     url='',
     license='Apache 2.0',
