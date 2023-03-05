@@ -14,7 +14,7 @@ class DomainValidator(BaseCommand):
 
     def handle(self, command: str, argument: str, shared_state: SharedState) -> BaseResponse:
         if not shared_state.current_command.response or shared_state.current_command.response.get_code() != 250:
-            self._logger.warning("Skipping domain validation: previous response not 250")
+            self._logger.info("Skipping domain validation: previous response not 250")
             return shared_state.current_command.response
 
         verify_smtp_server_available = self._config.get("verify_smtp_server_available", False)
@@ -31,7 +31,7 @@ class DomainValidator(BaseCommand):
 
         for domain_to_block in domains_to_block:
             if domain == domain_to_block or domain.endswith(f".{domain_to_block}"):
-                self._logger.warning("Rejecting sender as domain is in block domain list")
+                self._logger.warning(f"Rejecting sender as domain \"{domain}\" is in block domain list")
                 shared_state.mail_from.is_valid = False
                 return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
@@ -40,14 +40,14 @@ class DomainValidator(BaseCommand):
             self._logger.warning(f"Could not determine age of domain {domain}")
         else:
             if domain_age < minimum_domain_age_in_days:
-                self._logger.warning(f"Rejecting sender as domain has age of {domain_age} days "
+                self._logger.warning(f"Rejecting sender as domain \"{domain}\" has age of {domain_age} days "
                                      f"({minimum_domain_age_in_days} required)")
                 shared_state.mail_from.is_valid = False
                 return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
         domain_mx_records = dns.mx_records(domain)
         if len(domain_mx_records) == 0:
-            self._logger.warning("Rejecting sender as domain does not have MX records")
+            self._logger.warning("Rejecting sender as domain \"{domain}\" does not have MX records")
             shared_state.mail_from.is_valid = False
             return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
