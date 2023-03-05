@@ -5,5 +5,8 @@ verify_smtp_server_available: no
 # Set to 0 to disable
 minimum_domain_age_in_days: 0
 
+# Whether to use the system's whois command (more robust but must be installed) or internal whois library implementation
+use_system_whois: no
+
 # A list of domains (and subdomains) to block
 domains_to_block: []

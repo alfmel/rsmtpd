@@ -20,6 +20,7 @@ class DomainValidator(BaseCommand):
         verify_smtp_server_available = self._config.get("verify_smtp_server_available", False)
         minimum_domain_age_in_days = self._config.get("minimum_domain_age_in_days", 0)
         domains_to_block = self._config.get("domains_to_block", [])
+        use_system_whois = self._config.get("use_system_whois", False)
 
         domain = shared_state.mail_from.domain or self.__get_domain(shared_state.client_name.name)
 
@@ -34,7 +35,7 @@ class DomainValidator(BaseCommand):
                 shared_state.mail_from.is_valid = False
                 return SmtpResponse550(f"We are not accepting emails from {domain} at this time")
 
-        domain_age = dns.get_domain_age_in_days(domain)
+        domain_age = dns.get_domain_age_in_days(domain, use_system_whois=use_system_whois)
         if domain_age == -1:
             self._logger.warning(f"Could not determine age of domain {domain}")
         else:

@@ -44,9 +44,9 @@ def mx_records(domain: str) -> List[str]:
         return []
 
 
-def get_domain_age_in_days(domain: str) -> int:
+def get_domain_age_in_days(domain: str, use_system_whois: bool = False) -> int:
     try:
-        domain_info = whois(domain)
+        domain_info = whois(domain, command=use_system_whois)
         if domain.endswith(".edu"):
             creation_date = _parse_edu_whois_creation_date(domain_info.text)
         else:
