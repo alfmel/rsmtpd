@@ -10,7 +10,8 @@ from typing import List
 
 class ExternalContentFilter(BaseDataCommand):
     """
-    This module will execute the given command and pass a reference to the message data file as the last argument. It
+    This module will execute the given command and pass a reference to the message data file and the recipient as the
+    last two arguments, in that order (e.g., /path/to/command some-arg /path/to/message recipient@example.com). It
     expects output with a number representing a score of whether the message is spam or not. If the number is above the
     threshold set in the configuration, the server will reject the email.
     """
@@ -37,6 +38,7 @@ class ExternalContentFilter(BaseDataCommand):
 
             command_list = command if isinstance(command, list) else command.split(" ")
             command_list.append(shared_state.data_filename)
+            command_list.append(list(shared_state.recipients)[0].deliver_to)
 
             result = subprocess.run(command_list, capture_output=True)
             if result.returncode != 0:

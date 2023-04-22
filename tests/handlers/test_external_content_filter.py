@@ -6,6 +6,7 @@ from rsmtpd.handlers.external_content_filter import ExternalContentFilter
 from rsmtpd.handlers.shared_state import SharedState, CurrentCommand
 from rsmtpd.response.smtp_250 import SmtpResponse250
 from rsmtpd.validators.email_address.parser import parse_email_address_input
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
 
@@ -23,6 +24,9 @@ class TestExternalContentFilter(unittest.TestCase):
     def test_email_rejected(self):
         shared_state = SharedState(("10.20.30.40", 12345))
         shared_state.mail_from = parse_email_address_input("<>", True)
+        recipient = parse_email_address_input("<test@example.com>")
+        recipient.email_address = "test@example.com"
+        shared_state.recipients = {ValidatedRecipient(recipient, deliver_to="test.example.com")}
         shared_state.current_command = CurrentCommand()
         shared_state.current_command.response = SmtpResponse250()
 
@@ -49,6 +53,9 @@ class TestExternalContentFilter(unittest.TestCase):
     def test_email_flagged(self):
         shared_state = SharedState(("10.20.30.40", 12345))
         shared_state.mail_from = parse_email_address_input("<>", True)
+        recipient = parse_email_address_input("<test@example.com>")
+        recipient.email_address = "test@example.com"
+        shared_state.recipients = {ValidatedRecipient(recipient, deliver_to="test.example.com")}
         shared_state.current_command = CurrentCommand()
         shared_state.current_command.response = SmtpResponse250()
 
@@ -76,6 +83,9 @@ class TestExternalContentFilter(unittest.TestCase):
     def test_email_passes(self):
         shared_state = SharedState(("10.20.30.40", 12345))
         shared_state.mail_from = parse_email_address_input("<>", True)
+        recipient = parse_email_address_input("<test@example.com>")
+        recipient.email_address = "test@example.com"
+        shared_state.recipients = {ValidatedRecipient(recipient, deliver_to="test.example.com")}
         shared_state.current_command = CurrentCommand()
         shared_state.current_command.response = SmtpResponse250()
 
