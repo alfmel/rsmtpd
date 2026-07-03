@@ -59,10 +59,12 @@ class DataToFileDataHandler(BaseDataCommand):
         tls_enabled = "enabled" if shared_state.client.tls_enabled else "disabled"
         helo = "EHLO" if shared_state.esmtp_capable else "HELO"
         datetime_str = datetime.now().strftime("%Y-%m-%dT%H:%M:%S%z")
+        recipients = ", ".join(r.email_address for r in shared_state.recipients)
 
         headers = f"Return-Path: <{shared_state.mail_from.email_address}>\r\n" \
                   f"Received: from [{ip_and_port}] {client_host_name} TLS {tls_enabled}\r\n" \
                   f"          with {helo} {shared_state.client.advertised_name}\r\n" \
-                  f"          on {datetime_str} by RSMTPD {shared_state.server_version}\r\n"
+                  f"          on {datetime_str} by RSMTPD {shared_state.server_version}\r\n" \
+                  f"          for {recipients}\r\n" \
 
         self.__mail_file.write(bytes(headers, "UTF8"))
