@@ -1,3 +1,4 @@
+from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.validators.email_address.parser import ParsedEmailAddress
 from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from typing import Set, Union
@@ -34,29 +35,32 @@ class CurrentCommand(object):
     """
     An object with the current command and connection buffer state
     """
-    # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before
-    # sending data (violates RFC 5321 Section 4.3.1 if PIPELINE is disabled)
-    buffer_is_empty = True
+    def __init__(self):
+        # Whether the socket input buffer is empty; if false, it means the client is not waiting for responses before
+        # sending data (violates RFC 5321 Section 4.3.1 if PIPELINE is disabled)
+        self.buffer_is_empty: bool = True
 
-    # The last response received by the command handler for this command; helps command handlers merge responses
-    response = None
+        # The last response received by the command handler for this command; helps command handlers merge responses
+        self.response: Union[BaseResponse, None] = None
 
 
 class ClientName(object):
     """
     An object for storing client greeting information
     """
-    # The client name given by the client in HELO/EHLO command
-    name: str = None
 
-    # Whether the client name is a resolvable FQDN
-    is_valid_fqdn: bool = None
+    def __init__(self, name: Union[str, None] = None):
+        # The client name given by the client in HELO/EHLO command
+        self.name: Union[str, None] = name
 
-    # The IP address associated with the given client name (None if not FQDN)
-    forward_dns_ip: str = None
+        # Whether the client name is a resolvable FQDN
+        self.is_valid_fqdn: bool = False
 
-    # The reverse IP name (None if no reverse IP found)
-    reverse_dns_name: str = None
+        # The IP address associated with the given client name (None if not FQDN)
+        self.forward_dns_ip: Union[str, None] = None
+
+        # The reverse IP name (None if no reverse IP found)
+        self.reverse_dns_name: Union[str, None] = None
 
 
 class SharedState(object):
@@ -101,7 +105,7 @@ class SharedState(object):
     # An object with the current command information
     current_command: CurrentCommand = None
 
-    def __init__(self, remote_address, tls_available=False):
+    def __init__(self, remote_address: (str, int), tls_available: bool = False):
         self.transaction_id = uuid4().hex
         self.client = Client(remote_address, tls_available)
         self.client_name = None

@@ -1,2 +1,4 @@
 dnspython
 pyaml
+pyspf
+python-whois

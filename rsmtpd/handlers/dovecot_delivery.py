@@ -16,7 +16,7 @@ class DovecotDelivery(BaseDataCommand):
         if shared_state.current_command.response.get_code() != 250:
             self._logger.warning(f"Email {shared_state.transaction_id} will not be delivered as it lacks 250 response "
                                  f"(actual code: {shared_state.current_command.response.get_code()} "
-                                 f"{shared_state.current_command.response.get_smtp_response()})")
+                                 f"{shared_state.current_command.response.get_message()})")
             return shared_state.current_command.response
 
         if not shared_state.data_filename:

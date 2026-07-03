@@ -22,6 +22,9 @@ class DataHandler(BaseCommand):
         if not shared_state.mail_from:
             return SmtpResponse503("You must first use the MAIL command before attempting to send DATA")
 
+        if not shared_state.mail_from.is_valid:
+            return SmtpResponse503("MAIL FROM was rejected")
+
         if not len(shared_state.recipients):
             return SmtpResponse503("You must provide one or more valid recipients before attempting to send DATA")
 

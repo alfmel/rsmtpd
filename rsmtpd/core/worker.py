@@ -13,6 +13,7 @@ from rsmtpd.handlers.shared_state import CurrentCommand, SharedState
 from rsmtpd.response.action import *
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.response.smtp_451 import SmtpResponse451
+from rsmtpd.response.smtp_454 import SmtpResponse454
 from rsmtpd.response.smtp_500 import SmtpResponse500
 
 
@@ -21,7 +22,7 @@ class Worker(object):
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.5.0"
+    __VERSION = "0.5.10"
 
     __default_config = {
         "command_handler": "__default__",
@@ -111,20 +112,25 @@ class Worker(object):
                 return
             elif response.get_action() == STARTTLS:
                 if tls.enabled():
-                    self._send_response(smtp_socket, response)
-                    ssl_socket, response, server_name = tls.start(sock)
-                    if not response:
-                        self._shared_state.tls_enabled = True
-                        self.__server_name = server_name
-                        sock = ssl_socket
-                        smtp_socket = SMTPSocket(ssl_socket)
-                        self.__logger.info("TLS successfully initialized")
-                        command = None
-                        continue
+                    self._send_response(smtp_socket, response, command)
+
+                    try:
+                        ssl_socket, response, server_name = tls.start(sock)
+                        if not response:
+                            self._shared_state.client.tls_enabled = True
+                            self.__server_name = server_name
+                            smtp_socket = SMTPSocket(ssl_socket)
+                            self.__logger.info("TLS successfully initialized")
+
+                            command = None
+                            argument = ""
+                            continue
+                    except Exception:
+                        response = SmtpResponse454()
                 else:
                     response = SmtpResponse500()
 
-            self._send_response(smtp_socket, response)
+            self._send_response(smtp_socket, response, command)
 
             # Clear the command for the next loop iteration
             command = None
@@ -159,11 +165,15 @@ class Worker(object):
                 argument = split_line[1].strip()
             else:
                 argument = ""
-        except Exception as ex:
+        except (RemoteConnectionClosedException, ConnectionResetError) as e:
+            command = None
+            argument = None
+            self.__logger.info(f"Unable to read incoming command {e}:")
+        except Exception as e:
             command = None
             argument = None
             self.__logger.info("Unable to read incoming command")
-            self.__logger.info(ex, exc_info=True)
+            self.__logger.info(e, exc_info=True)
 
         return command, argument
 
@@ -179,16 +189,26 @@ class Worker(object):
 
         return line, data_end
 
-    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse):
-        if self._shared_state.esmtp_capable:
-            self.__logger.info("%s Sending extended response to client with SMTP code %s",
-                               self._shared_state.transaction_id, response.get_code())
-            smtp_socket.write(self.__replace_response_templates(response.get_extended_smtp_response()).encode())
-        else:
-            self.__logger.info("%s Sending response to client with SMTP code %s",
-                               self._shared_state.transaction_id,
-                               response.get_code())
-            smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
+    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse, command: str):
+        try:
+            if self._shared_state.esmtp_capable:
+                self.__logger.info("%s Sending extended response to client command %s with SMTP code %s",
+                                   self._shared_state.transaction_id, command, response.get_code())
+                smtp_socket.write(self.__replace_response_templates(response.get_extended_smtp_response()).encode())
+            else:
+                self.__logger.info("%s Sending response to client command %s with SMTP code %s",
+                                   self._shared_state.transaction_id, command, response.get_code())
+                smtp_socket.write(self.__replace_response_templates(response.get_smtp_response()).encode())
+        except (RemoteConnectionClosedException, ConnectionResetError) as e:
+            command = None
+            argument = None
+            self.__logger.info(f"Unable to send response {e}:")
+            raise e
+        except Exception as e:
+            command = None
+            argument = None
+            self.__logger.info("Unable to send command")
+            raise e
 
     def __replace_response_templates(self, response: str) -> str:
         response = response.replace("<server_name>", self.__server_name)

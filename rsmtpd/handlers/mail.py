@@ -26,6 +26,7 @@ class MailHandler(BaseCommand):
             return SmtpResponse501("Email address does not appear to be valid")
 
         if shared_state.mail_from.email_address == "":
-            return SmtpResponse250("Accepting bounced message")
+            return SmtpResponse250("The body better contain an Undeliverable Mail Notification Message as defined in "
+                                   "RFC 5321")
 
         return SmtpResponse250()

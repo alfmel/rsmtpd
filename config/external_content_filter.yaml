@@ -1,0 +1,8 @@
+# This is the command that will be run, with the full path to the temporary message data file appended to the end
+command: "/path/to/program -o option"
+reject_threshold: 98
+flag_threshold: 60
+# If the message is only to be flagged, the flags are the values added to the headers section of the message
+flags:
+  - "Spam: Yes"
+  - "X-Spam: Yes"

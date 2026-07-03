@@ -4,21 +4,24 @@ RSMTPD is a modular and configurable SMTP server designed to improve the researc
 email-related topics.
 
 ## Status
-RSMTPD is now at version 0.5.0 and supports the following features:
-* Running as full, nearly RFC-5321 compliant server capable of delivering email through dovecot-lda
+RSMTPD is now at version 0.6.0 and supports the following features:
+* Running as full, nearly RFC-5321 compliant server: 
+  * Email delivery through dovecot-lda
+  * Spam-filtering with the following features:
+    * Domain validation with configurable domain age validation
+    * SPF validation and rejection
+    * External content filtering, with header labeling or immediate rejection
 * Running as non-working email server with SMTP 521 response (RFC 7504) to any command presented
 * Acting as a proxy to another full SMTP server, including TLS and SNI
 * Logging commands and responses to transaction logs
 
 Unsupported features:
-* SFP/SenderID
 * Signature verifications
 * Any other form of Spam filtering
 
 
 ## ROAD MAP
-* Version 0.6.0: Basic spam-reducing functionality (SPF, Sender ID, reputation tracking)
-* ...
+* Version 0.7.0: Reputation tracking, sampling from rejected emails
 * Version 0.9.0: First beta release, internal API freeze
 * Version 1.0.0: Available for general consumption
 

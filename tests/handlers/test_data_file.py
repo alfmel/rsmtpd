@@ -4,7 +4,9 @@ from logging import Logger
 from rsmtpd.handlers.data_file import DataToFileDataHandler
 from rsmtpd.handlers.shared_state import SharedState, ClientName
 from rsmtpd.validators.email_address.parser import ParsedEmailAddress
+from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import MockConfigLoader, StubLoggerFactory
+from rsmtpd.validators.email_address.parser import parse_email_address_input
 
 
 class TestDataToFileDataHandler(unittest.TestCase):
@@ -20,6 +22,8 @@ class TestDataToFileDataHandler(unittest.TestCase):
         shared_state = SharedState(("127.0.0.1", 12345))
         shared_state.client_name = ClientName()
         shared_state.mail_from = ParsedEmailAddress()
+        shared_state.recipients.add(ValidatedRecipient(parse_email_address_input("test1@example.com")))
+        shared_state.recipients.add(ValidatedRecipient(parse_email_address_input("test2@example.com")))
 
         handler.handle_data(b"This is line 1\r\n", shared_state)
         handler.handle_data(b"This is line 2\r\n", shared_state)
@@ -32,6 +36,8 @@ class TestDataToFileDataHandler(unittest.TestCase):
         with open(shared_state.data_filename) as data_file:
             data_output = data_file.read()
 
+            self.assertTrue("for test2@example.com, test1@example.com" in data_output or \
+                            "for test1@example.com, test2@example.com" in data_output)
             self.assertTrue("line 1" in data_output)
             self.assertTrue("line 2" in data_output)
 

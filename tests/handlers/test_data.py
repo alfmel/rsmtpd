@@ -1,8 +1,8 @@
 import unittest
 from logging import Logger
 from rsmtpd.handlers.data import DataHandler
-from rsmtpd.handlers.shared_state import SharedState
-from rsmtpd.validators.email_address.parser import ParsedEmailAddress
+from rsmtpd.handlers.shared_state import SharedState, ClientName
+from rsmtpd.validators.email_address.parser import ParsedEmailAddress, parse_email_address_input
 from rsmtpd.validators.email_address.recipient import ValidatedRecipient
 from tests.mocks import MockConfigLoader, StubLoggerFactory
 
@@ -33,17 +33,28 @@ class TestDataHandler(unittest.TestCase):
     def test_no_mail_from(self):
         handler = DataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
-        shared_state.client_name = "localhost"
+        shared_state.client_name = ClientName("localhost")
 
         response = handler.handle("DATA", "", shared_state)
         self.assertEqual(response.get_code(), 503)
         self.assertTrue("MAIL" in response.get_smtp_response())
 
+    def test_invalid_mail_from(self):
+        handler = DataHandler(self._mock_logger, self._mock_config_loader)
+        shared_state = SharedState(("127.0.0.1", 12345))
+        shared_state.client_name = ClientName("localhost")
+        shared_state.mail_from = ParsedEmailAddress()
+        shared_state.mail_from.is_valid = False
+
+        response = handler.handle("DATA", "", shared_state)
+        self.assertEqual(response.get_code(), 503)
+        self.assertTrue("MAIL FROM" in response.get_smtp_response())
+
     def test_no_recipients(self):
         handler = DataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
-        shared_state.client_name = "localhost"
-        shared_state.mail_from = ParsedEmailAddress()
+        shared_state.client_name = ClientName("localhost")
+        shared_state.mail_from = parse_email_address_input("<test@example.com>")
 
         response = handler.handle("DATA", "", shared_state)
         self.assertEqual(response.get_code(), 503)
@@ -52,9 +63,9 @@ class TestDataHandler(unittest.TestCase):
     def test_everything_read(self):
         handler = DataHandler(self._mock_logger, self._mock_config_loader)
         shared_state = SharedState(("127.0.0.1", 12345))
-        shared_state.client_name = "localhost"
-        shared_state.mail_from = ParsedEmailAddress()
-        recipient = ParsedEmailAddress()
+        shared_state.client_name = ClientName("localhost")
+        shared_state.mail_from = parse_email_address_input("<test@example.com>")
+        recipient = parse_email_address_input("<test@example.com")
         recipient.email_address = "test@example.com"
         shared_state.recipients.add(ValidatedRecipient(recipient))
 
