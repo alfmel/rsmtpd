@@ -1,7 +1,8 @@
-from datetime import datetime, date
-from dns import resolver, reversename
-from dns.resolver import NXDOMAIN
+from datetime import datetime, timezone
 from typing import List, Union
+
+from dns import resolver, reversename
+from dns.resolver import NXDOMAIN, NoAnswer
 from whois import whois
 
 
@@ -40,7 +41,9 @@ def mx_records(domain: str) -> List[str]:
     try:
         results = resolver.resolve(domain, "MX")
         return [str(result.exchange)[:-1] for result in results]
-    except NXDOMAIN:
+    except NXDOMAIN, NoAnswer:
+        return []
+    except Exception:
         return []
 
 
@@ -52,16 +55,18 @@ def get_domain_age_in_days(domain: str, use_system_whois: bool = False) -> int:
         else:
             creation_date = domain_info.creation_date[0] if isinstance(domain_info.creation_date, list) \
                 else domain_info.creation_date
-        return (datetime.now() - creation_date).days
-    except Exception as e:
+        return (datetime.now(timezone.utc) - creation_date).days
+    except Exception:
         return -1
 
 
-def _parse_edu_whois_creation_date(whois_info: str) -> datetime:
+def _parse_edu_whois_creation_date(whois_info: str) -> Union[datetime, None]:
     record_activated = list(filter(lambda line: line.lower().startswith("domain record activated:"),
                                    whois_info.splitlines()))
     if len(record_activated):
-        return datetime.strptime(record_activated[-1].strip()[-10:], "%d-%b-%Y")
+        return datetime.strptime(record_activated[-1].strip()[-10:], "%d-%b-%Y").replace(tzinfo=timezone.utc)
+
+    return None
 
 
 def _find_best_ip(ip_addresses: List[str], ip_address: str) -> Union[str, None]:

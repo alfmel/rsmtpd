@@ -1,7 +1,7 @@
 from rsmtpd.response.base_response import BaseResponse
 from rsmtpd.validators.email_address.parser import ParsedEmailAddress
 from rsmtpd.validators.email_address.recipient import ValidatedRecipient
-from typing import Set, Union
+from typing import Set, Union, Tuple
 from uuid import uuid4
 
 
@@ -24,9 +24,8 @@ class Client(object):
     # The name given by the client during HELO/EHLO
     advertised_name: str = None
 
-    def __init__(self, remote_address: (str, int), tls_available=False):
-        self.ip = remote_address[0]
-        self.port = remote_address[1]
+    def __init__(self, remote_address: Tuple[str, int], tls_available: bool = False):
+        self.ip, self.port = remote_address
         self.tls_available = tls_available
         self.advertised_name = "[{}:{}]".format(self.ip, self.port)
 
@@ -105,7 +104,7 @@ class SharedState(object):
     # An object with the current command information
     current_command: CurrentCommand = None
 
-    def __init__(self, remote_address: (str, int), tls_available: bool = False):
+    def __init__(self, remote_address: Tuple[str, int], tls_available: bool = False):
         self.transaction_id = uuid4().hex
         self.client = Client(remote_address, tls_available)
         self.client_name = None

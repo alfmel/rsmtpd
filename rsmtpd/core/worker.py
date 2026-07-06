@@ -1,9 +1,10 @@
 import copy
 import socket
-from typing import Dict, List
+from typing import Dict, List, Type, TypeVar, Tuple, Union
+
+from rsmtpd.core.class_factory import ClassFactory
 from rsmtpd.core.config_loader import ConfigLoader
 from rsmtpd.core.logger_factory import LoggerFactory
-from rsmtpd.core.class_factory import ClassFactory
 from rsmtpd.core.smtp_socket import SMTPSocket
 from rsmtpd.core.tls import TLS
 from rsmtpd.exceptions import RemoteConnectionClosedException
@@ -17,12 +18,14 @@ from rsmtpd.response.smtp_454 import SmtpResponse454
 from rsmtpd.response.smtp_500 import SmtpResponse500
 
 
+T = TypeVar('T')
+
 class Worker(object):
     """
     The main worker class. All incoming connections will be handled in a worker
     """
 
-    __VERSION = "0.6.0"
+    __VERSION = "0.6.90"
 
     __default_config = {
         "command_handler": "__default__",
@@ -56,7 +59,7 @@ class Worker(object):
         self.__first_data_chunk = True
         self.__last_data_chunk_ends_with_crlf = False
 
-    def handle_client(self, sock: socket, remote_address, tls: TLS):
+    def handle_client(self, sock: socket.socket, remote_address, tls: TLS):
         smtp_socket = SMTPSocket(sock)
 
         # Load the worker and handler configurations
@@ -147,7 +150,7 @@ class Worker(object):
                 # Get the data in the next iteration
                 command = "__DATA__"
 
-    def _read_command(self, smtp_socket: SMTPSocket) -> (str, str):
+    def _read_command(self, smtp_socket: SMTPSocket) -> Tuple[str, str]:
         # TODO: Enforce line length
         line_bytes = smtp_socket.read_line()
         self._shared_state.last_command_has_standard_line_ending = line_bytes[-2:] == b"\r\n"
@@ -177,19 +180,19 @@ class Worker(object):
 
         return command, argument
 
-    def _read_data(self, smtp_socket: SMTPSocket) -> (str, bool, bool):
+    def _read_data(self, smtp_socket: SMTPSocket) -> Tuple[bytes, bool]:
         # Reading SMTP data is done line-by-line to enforce data lengths and handle data termination
         # TODO: Enforce data line length
         line = smtp_socket.read_line()
         data_end = line.rstrip() == b"."
 
         # If a line begins with a period, remove it (RFC 5321 4.5.2)
-        if len(line) and line[0] == b".":
-            data_chunk = line[1:]
+        if len(line) > 1 and line[0] == b".":
+            line = line[1:]
 
         return line, data_end
 
-    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse, command: str):
+    def _send_response(self, smtp_socket: SMTPSocket, response: BaseResponse, command: Union[str, None]):
         try:
             if self._shared_state.esmtp_capable:
                 self.__logger.info("%s Sending extended response to client command %s with SMTP code %s",
@@ -220,7 +223,7 @@ class Worker(object):
         return response
 
     def _handle_command(self, command: str, argument: str, buffer_is_empty: bool) -> BaseResponse:
-        command_handlers = self._get_command_config(command)
+        command_handlers = self._get_configured_command_handlers(command)
         response = None
 
         self._shared_state.current_command = CurrentCommand()
@@ -243,7 +246,7 @@ class Worker(object):
         return response
 
     def _handle_data(self, smtp_socket: SMTPSocket) -> BaseResponse:
-        command_handlers = self._get_command_config("__DATA__")
+        command_handlers = self._get_configured_command_handlers("__DATA__")
         response = None
 
         # Get all the command handlers
@@ -297,7 +300,7 @@ class Worker(object):
 
         return handler_config
 
-    def _get_command_config(self, command: str) -> List[Dict]:
+    def _get_configured_command_handlers(self, command: str) -> List[Dict]:
         """
         Loads the list of command handlers for the given SMTP command, falling back to the default command handler list
         if necessary.
@@ -315,7 +318,7 @@ class Worker(object):
             command_config = self._handler_config["__DEFAULT__"]
         return command_config
 
-    def _get_handler(self, command_config: Dict, class_type):
+    def _get_handler(self, command_config: Dict, class_type: Type[T]) -> T:
         if command_config:
             return self.__class_factory.get_instance(command_config["module"], command_config["class"], class_type)
         return None
